@@ -1,0 +1,14 @@
+{
+  "name": "hackaton-auction-common",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "license": "MIT",
+  "types": "./src/index.ts",
+  "scripts": {
+    "clean": "rm -rf build node_modules",
+    "build": "tsc",
+    "start:dev": "ts-node src/index.ts",
+    "lint": "gts lint",
+    "lint:fix": "gts fix"
+  }
+}
