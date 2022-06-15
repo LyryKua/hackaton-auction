@@ -1,0 +1,22 @@
+{
+  "name": "hackaton-auction-admin-bot",
+  "version": "1.0.0",
+  "main": ".prettierrc.js",
+  "dependencies": {},
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "scripts": {
+    "clean": "rm -rf build node_modules",
+    "build": "tsc",
+    "start:dev": "ts-node src/index.ts",
+    "lint": "gts lint",
+    "lint:fix": "gts fix"
+  },
+  "devDependencies": {
+    "@types/node": "^14.11.2",
+    "gts": "^3.1.0",
+    "ts-node": "^10.8.1",
+    "typescript": "^4.7.3"
+  }
+}
