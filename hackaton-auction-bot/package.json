@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "dotenv": "^16.0.1",
-    "telegraf": "^4.8.5"
+    "telegraf": "^4.8.5",
+    "hackaton-auction-common": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.11.2",

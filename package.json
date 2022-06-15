@@ -1,21 +1,24 @@
 {
-  "name": "hackaton-auction-admin-bot",
+  "name": "hackaton-auction",
   "version": "1.0.0",
   "main": ".prettierrc.js",
   "author": "",
   "license": "ISC",
   "description": "",
-  "scripts": {
-    "clean": "rm -rf build node_modules",
-    "build": "tsc",
-    "start:dev": "ts-node src/index.ts",
-    "lint": "gts lint",
-    "lint:fix": "gts fix"
-  },
+  "private": true,
+  "workspaces": [
+    "hackaton-auction-admin-bot",
+    "hackaton-auction-bot",
+    "hackaton-auction-common"
+  ],
   "dependencies": {
     "dotenv": "^16.0.1",
-    "telegraf": "^4.8.5",
-    "hackaton-auction-common": "1.0.0"
+    "telegraf": "^4.8.5"
+  },
+  "scripts": {
+    "clean": "rm -rf build node_modules",
+    "lint": "gts lint",
+    "lint:fix": "gts fix"
   },
   "devDependencies": {
     "@types/node": "^14.11.2",
