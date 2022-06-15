@@ -1,6 +1,6 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-
+import {ExampleShared} from 'hackaton-auction-common';
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
 }
@@ -8,7 +8,9 @@ if (!process.env.BOT_TOKEN) {
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.command('test', ctx => {
-  ctx.reply('Hello!');
+  const t = new ExampleShared();
+
+  ctx.reply(t.test());
   ctx.reply("I'm 'hackaton-auction-admin-bot'");
   ctx.reply(
     `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`

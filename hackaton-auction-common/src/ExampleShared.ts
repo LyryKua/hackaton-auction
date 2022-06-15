@@ -1,6 +1,6 @@
 export class ExampleShared {
   constructor() {}
   test() {
-    console.log('hello');
+    return 'TEST TEST';
   }
 }
