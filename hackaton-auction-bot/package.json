@@ -2,7 +2,6 @@
   "name": "hackaton-auction-bot",
   "version": "1.0.0",
   "main": ".prettierrc.js",
-  "dependencies": {},
   "author": "",
   "license": "ISC",
   "description": "",
@@ -12,6 +11,10 @@
     "start:dev": "ts-node src/index.ts",
     "lint": "gts lint",
     "lint:fix": "gts fix"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.1",
+    "telegraf": "^4.8.5"
   },
   "devDependencies": {
     "@types/node": "^14.11.2",
