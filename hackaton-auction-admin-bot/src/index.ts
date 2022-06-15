@@ -1,5 +1,7 @@
 import { Telegraf } from 'telegraf'
-import 'dotenv/config'
+import * as dotenv from 'dotenv'
+
+dotenv.config({path: __dirname + '/../.env.dev'})
 
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided')
