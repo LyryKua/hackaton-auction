@@ -10,22 +10,51 @@ export interface Auction {
   volunteerId: string;
 }
 
+export interface Bid {
+  userId: string;
+  auction: Auction;
+  amount: number;
+  createdAt: Date;
+}
+
+interface DBBid {
+  userId: string;
+  auctionId: string;
+  amount: number;
+  createdAt: Date;
+}
+
 export type NewAuction = Omit<Auction, 'id'>;
 
 type DBAuction = WithId<NewAuction>;
+// type WithNormalId<T extends Record<string, unknown>> = T & {id: string};
+//
+// const transformId = <T extends Record<string, unknown>>({
+//   _id,
+//   ...rest
+// }: WithId<T>): Omit<T, '_id'> & {id: string} => {
+//   const newVar = {
+//     id: _id.toString(),
+//     ...rest,
+//   };
+//   return newVar;
+// };
 
 const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
   id: _id.toString(),
   ...auction,
 });
-export class AuctionRepository {
-  private readonly AUCTIONS_COLLECTION = 'auctions';
 
+abstract class RepositoryBase<Model> {
+  abstract collectionName: string;
   constructor(protected readonly db: Db) {}
 
-  private collection<T = Auction>() {
-    return this.db.collection<T>(this.AUCTIONS_COLLECTION);
+  protected collection<T = Model>() {
+    return this.db.collection<T>(this.collectionName);
   }
+}
+export class AuctionRepository extends RepositoryBase<Auction> {
+  readonly collectionName: string = 'auctions';
 
   async create(auction: NewAuction): Promise<void> {
     await this.collection<NewAuction>().insertOne(auction);
@@ -48,5 +77,18 @@ export class AuctionRepository {
       return null;
     }
     return transformAuction(auction);
+  }
+}
+
+export class BidRepository extends RepositoryBase<Bid> {
+  collectionName = 'bids';
+
+  async makeBid(bid: Omit<Bid, 'createdAt'>) {
+    await this.collection<Omit<DBBid, '_id'>>().insertOne({
+      amount: bid.amount,
+      auctionId: bid.auction.id,
+      createdAt: new Date(),
+      userId: bid.userId
+    });
   }
 }
