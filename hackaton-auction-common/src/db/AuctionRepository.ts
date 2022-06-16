@@ -1,4 +1,4 @@
-import type {Db} from 'mongodb';
+import {Db, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
 
 export interface Auction {
@@ -12,12 +12,10 @@ export interface Auction {
 
 export type NewAuction = Omit<Auction, 'id'>;
 
-interface DBAuction extends Omit<Auction, 'id'> {
-  _id: string;
-}
+type DBAuction = WithId<NewAuction>;
 
 const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
-  id: _id,
+  id: _id.toString(),
   ...auction,
 });
 export class AuctionRepository {
@@ -25,23 +23,30 @@ export class AuctionRepository {
 
   constructor(protected readonly db: Db) {}
 
+  private collection<T = Auction>() {
+    return this.db.collection<T>(this.AUCTIONS_COLLECTION);
+  }
+
   async create(auction: NewAuction): Promise<void> {
-    await this.db
-      .collection<NewAuction>(this.AUCTIONS_COLLECTION)
-      .insertOne(auction);
+    await this.collection<NewAuction>().insertOne(auction);
   }
 
   async createMany(auctions: NewAuction[]): Promise<void> {
-    await this.db
-      .collection<NewAuction>(this.AUCTIONS_COLLECTION)
-      .insertMany(auctions);
+    await this.collection<NewAuction>().insertMany(auctions);
   }
 
   findAll(): Promise<Auction[]> {
-    const cursor = this.db
-      .collection(this.AUCTIONS_COLLECTION)
-      .find<Auction & {_id: string}>({});
+    const cursor = this.collection().find<DBAuction>({});
     return cursor.map(transformAuction).toArray();
+  }
 
+  async findOne(auctionId: string): Promise<Auction | null> {
+    const auction = await this.collection<Auction>().findOne({
+      _id: new ObjectId(auctionId),
+    });
+    if (!auction) {
+      return null;
+    }
+    return transformAuction(auction);
   }
 }
