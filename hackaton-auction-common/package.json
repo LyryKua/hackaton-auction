@@ -10,5 +10,8 @@
     "start:dev": "ts-node src/index.ts",
     "lint": "gts lint",
     "lint:fix": "gts fix"
+  },
+  "dependencies": {
+    "telegraf": "^4.8.5"
   }
 }

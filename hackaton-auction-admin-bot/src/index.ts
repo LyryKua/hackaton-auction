@@ -1,6 +1,7 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {ExampleShared} from 'hackaton-auction-common';
+import {ExampleShared, launchBot} from 'hackaton-auction-common';
+
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
 }
@@ -17,7 +18,7 @@ bot.command('test', ctx => {
   );
 });
 
-bot.launch();
+launchBot(bot);
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
