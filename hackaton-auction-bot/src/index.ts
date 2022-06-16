@@ -5,17 +5,20 @@ import {
   AuctionRepository,
   ExampleShared,
   launchBot,
-  mockAuctions,
 } from 'hackaton-auction-common';
 
 const example = new ExampleShared();
 example.test();
 
-const url = 'mongodb://localhost:27017/'; // TODO: move it to `.env`
-const DB_NAME = 'auction_bot'; // TODO: move it to `.env`
+const DB_URL = process.env.DB_URL; // TODO: move it to `.env`
+const DB_NAME = process.env.DB_NAME;
 
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
+}
+
+if (!DB_URL || !DB_NAME) {
+  throw new Error('DB is not configured well');
 }
 
 interface AppContext extends Context {
@@ -25,23 +28,37 @@ interface AppContext extends Context {
 const bot = new Telegraf<AppContext>(process.env.BOT_TOKEN);
 
 bot.use(async (ctx, next) => {
-  const connection = await MongoClient.connect(url);
+  const connection = await MongoClient.connect(DB_URL);
   ctx.db = connection.db(DB_NAME);
   return next();
+});
+
+bot.start(async ctx => {
+  const auctionId = ctx.startPayload;
+  const auctionRepo = new AuctionRepository(ctx.db);
+  const auction = await auctionRepo.findOne(auctionId);
+  if (!auction) {
+    ctx.reply('Щось не так, нема такого аукціону(');
+    ctx.reply(JSON.stringify(await auctionRepo.findAll(), null, 2))
+    return;
+  }
+  console.log('auction.photos', auction.photos);
+  ctx.reply(`${auction.title}
+${auction.description}`);
+  await ctx.replyWithPhoto(auction.photos[0].file_id);
 });
 
 bot.command('test', ctx => {
   ctx.reply('Hello!');
   ctx.reply("I'm 'hackaton-auction-bot'");
   ctx.reply(
-      `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
+    `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
   );
   bot.on('photo', ctx => {
     ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
     ctx.replyWithPhoto(ctx.message.photo[0].file_id);
-  })
+  });
 });
-
 
 bot.command('make_bit', ctx => {
   ctx.reply('Ставка прийнята');
@@ -64,51 +81,7 @@ bot.command('about', ctx => {
   bot.on('photo', ctx => {
     ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
     ctx.replyWithPhoto(ctx.message.photo[0].file_id);
-  })
-});
-
-const SUPER_ADMINS = [ // devs you can add your user id here
-    45412931
-];
-
-bot.command('clear_mock', async ctx => {
-  const userId = ctx.message.from.id;
-  if (!SUPER_ADMINS.includes(userId)) {
-    ctx.reply('Сильно хитрий?')
-    return;
-  }
-  ctx.reply('You are about to clear Auctions collection, like I mean are you mad? You sure? Y / N')
-  bot.on('text', async ctx => {
-    const text = ctx.message.text;
-    switch (text) {
-      case 'N':
-        ctx.reply('Good choice');
-        return;
-      case 'Y':
-        ctx.reply('Phew, you asked for it 😬');
-        // not actually doing it for now
-        return;
-      default:
-        ctx.reply('I told you Y or N, is it not clear? 🙄')
-    }
   });
-
-  console.log('userId', userId);
-})
-
-bot.command('fill_mock', async ctx => {
-  const auctionRepo = new AuctionRepository(ctx.db);
-  const username = ctx.message.from.username;
-  const userId = ctx.message.from.id;
-  await auctionRepo.createMany(mockAuctions(username || String(userId)));
-  ctx.reply('Created a couple of mock auctions for you, anything else?');
-});
-
-bot.command('list_a', async ctx => {
-  const auctionRepo = new AuctionRepository(ctx.db);
-  const auctions = await auctionRepo.findAll();
-  ctx.reply('Here they all are right from the DB');
-  ctx.reply(JSON.stringify(auctions, null, 2));
 });
 
 launchBot(bot);
