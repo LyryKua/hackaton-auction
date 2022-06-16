@@ -1,17 +1,17 @@
 import {Context, Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {ExampleShared, launchBot} from 'hackaton-auction-common';
+import {launchBot} from 'hackaton-auction-common';
 import {Db, MongoClient} from 'mongodb';
 
 const {BOT_TOKEN, DB_NAME, DB_URL} = process.env;
 
-if (!process.env.BOT_TOKEN) {
+if (!BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
 }
-if (!process.env.DB_NAME) {
+if (!DB_NAME) {
   throw new Error('no DB_NAME provided');
 }
-if (!process.env.DB_URL) {
+if (!DB_URL) {
   throw new Error('no DB_URL provided');
 }
 
