@@ -1,12 +1,30 @@
-import {Telegraf} from 'telegraf';
+import {Context, Telegraf} from 'telegraf';
 import 'dotenv/config';
 import {ExampleShared, launchBot} from 'hackaton-auction-common';
+import {Db, MongoClient} from "mongodb";
 
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
 }
+if (!process.env.DB_NAME) {
+  throw new Error('no DB_NAME provided');
+}
+if (!process.env.DB_URL) {
+  throw new Error('no DB_URL provided');
+}
+const { BOT_TOKEN, DB_NAME, DB_URL } = process.env
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+interface AppContext extends Context {
+  db: Db;
+}
+
+const bot = new Telegraf<AppContext>(BOT_TOKEN);
+
+bot.use(async (ctx, next) => {
+  const connection = await MongoClient.connect(DB_URL);
+  ctx.db = connection.db(DB_NAME);
+  return next();
+});
 
 bot.command('test', ctx => {
   const t = new ExampleShared();
