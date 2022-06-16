@@ -18,6 +18,7 @@
   "scripts": {
     "clean": "rm -rf build node_modules",
     "build": "wsrun --stages build",
+    "start": "wsrun --exclude hackaton-auction-common --stages start",
     "lint": "gts lint",
     "lint:fix": "gts fix"
   },
