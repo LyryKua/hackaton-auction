@@ -1,7 +1,9 @@
 import {Context, Telegraf} from 'telegraf';
 import 'dotenv/config';
 import {ExampleShared, launchBot} from 'hackaton-auction-common';
-import {Db, MongoClient} from "mongodb";
+import {Db, MongoClient} from 'mongodb';
+
+const {BOT_TOKEN, DB_NAME, DB_URL} = process.env;
 
 if (!process.env.BOT_TOKEN) {
   throw new Error('no BOT_TOKEN provided');
@@ -12,7 +14,6 @@ if (!process.env.DB_NAME) {
 if (!process.env.DB_URL) {
   throw new Error('no DB_URL provided');
 }
-const { BOT_TOKEN, DB_NAME, DB_URL } = process.env
 
 interface AppContext extends Context {
   db: Db;
@@ -26,14 +27,24 @@ bot.use(async (ctx, next) => {
   return next();
 });
 
-bot.command('test', ctx => {
-  const t = new ExampleShared();
+bot.command('create', ctx => {
+  ctx.reply('Створити аукціон');
+});
 
-  ctx.reply(t.test());
-  ctx.reply("I'm 'hackaton-auction-admin-bot'");
-  ctx.reply(
-    `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
-  );
+bot.command('edit', ctx => {
+  ctx.reply('Редагувати');
+});
+
+bot.command('about', ctx => {
+  ctx.reply('Тут буде інфа про те як працює бот');
+});
+
+bot.command('bids', ctx => {
+  ctx.reply('Подивитись останню ставку');
+});
+
+bot.command('close', ctx => {
+  ctx.reply('Закрити аукціон');
 });
 
 launchBot(bot);

@@ -10,7 +10,9 @@
     "build": "tsc",
     "start:dev": "ts-node src/index.ts",
     "lint": "gts lint",
-    "lint:fix": "gts fix"
+    "lint:fix": "gts fix",
+    "watch": "nodemon -e ts -w ./src -x npm run watch:serve",
+    "watch:serve": "ts-node src/index.ts"
   },
   "dependencies": {
     "dotenv": "^16.0.1",
