@@ -2,7 +2,10 @@ import {Telegraf, Context} from 'telegraf';
 import 'dotenv/config';
 import {Db, MongoClient} from 'mongodb';
 import {
+  Auction,
   AuctionRepository,
+  Bid,
+  BidRepository,
   ExampleShared,
   launchBot,
 } from 'hackaton-auction-common';
@@ -10,7 +13,7 @@ import {
 const example = new ExampleShared();
 example.test();
 
-const DB_URL = process.env.DB_URL; // TODO: move it to `.env`
+const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
 
 if (!process.env.BOT_TOKEN) {
@@ -23,6 +26,7 @@ if (!DB_URL || !DB_NAME) {
 
 interface AppContext extends Context {
   db: Db;
+  auction: Auction | null;
 }
 
 const bot = new Telegraf<AppContext>(process.env.BOT_TOKEN);
@@ -39,13 +43,18 @@ bot.start(async ctx => {
   const auction = await auctionRepo.findOne(auctionId);
   if (!auction) {
     ctx.reply('Щось не так, нема такого аукціону(');
-    ctx.reply(JSON.stringify(await auctionRepo.findAll(), null, 2))
+    ctx.reply(JSON.stringify(await auctionRepo.findAll(), null, 2));
     return;
   }
-  console.log('auction.photos', auction.photos);
-  ctx.reply(`${auction.title}
-${auction.description}`);
-  await ctx.replyWithPhoto(auction.photos[0].file_id);
+  ctx.auction = auction;
+  // console.log('auction.photos', auction.photos);
+
+  const caption = `${auction.title}
+${auction.description}`;
+  // ctx.reply(caption);
+  await ctx.replyWithPhoto(auction.photos[0].file_id, {
+    caption,
+  });
 });
 
 bot.command('test', ctx => {
@@ -60,7 +69,28 @@ bot.command('test', ctx => {
   });
 });
 
-bot.command('make_bit', ctx => {
+bot.command('make_bid', async ctx => {
+  console.log('make bid robe');
+  const bidRepository = new BidRepository(ctx.db);
+  const bidAmountStr = ctx.message.text.split(' ')[1];
+  if (String(Number(bidAmountStr)) !== bidAmountStr) {
+    ctx.reply('Бумласочка, введіть суму цифрами в форматі /make_bid 1000');
+    return;
+  }
+  const bidAmount = Number(bidAmountStr);
+  if (!ctx.auction) {
+    console.log('what do we do?');
+    ctx.reply(
+      'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
+    );
+    return;
+  }
+  const bid = {
+    userId: String(ctx.message.from.id),
+    auction: ctx.auction,
+    amount: bidAmount,
+  };
+  await bidRepository.makeBid(bid);
   ctx.reply('Ставка прийнята');
 });
 
@@ -78,10 +108,6 @@ bot.command('max_bid', ctx => {
 
 bot.command('about', ctx => {
   ctx.reply('У цьому боті ви можете робити ставку');
-  bot.on('photo', ctx => {
-    ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
-    ctx.replyWithPhoto(ctx.message.photo[0].file_id);
-  });
 });
 
 launchBot(bot);
