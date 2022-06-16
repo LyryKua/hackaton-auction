@@ -1,7 +1,7 @@
 {
   "name": "hackaton-auction-common",
   "version": "1.0.0",
-  "main": "./src/index.ts",
+  "main": "./build/index.js",
   "license": "MIT",
   "types": "./src/index.ts",
   "scripts": {
