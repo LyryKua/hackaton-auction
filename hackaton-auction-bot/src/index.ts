@@ -24,13 +24,24 @@ bot.use(async (ctx, next) => {
   ctx.db = connection.db(DB_NAME);
   return next();
 });
+bot.command('make_bit', ctx => {
+  ctx.reply('Ставка прийнята');
+});
 
-bot.command('test', ctx => {
-  ctx.reply('Hello!');
-  ctx.reply("I'm 'hackaton-auction-bot'");
-  ctx.reply(
-    `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
-  );
+bot.command('subscribe', ctx => {
+  ctx.reply('Ви підписались на оновлення');
+});
+
+bot.command('subscribe', ctx => {
+  ctx.reply('Ви відписались від оновлень');
+});
+
+bot.command('max_bid', ctx => {
+  ctx.reply('Максимальна ставка 100500');
+});
+
+bot.command('about', ctx => {
+  ctx.reply('У цьому боті ви можете робити ставку');
 });
 
 launchBot(bot);
