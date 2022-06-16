@@ -26,6 +26,6 @@ yarn
 yarn build
 
 #from bot folder
-docker-compose up
+docker-compose up -d
 yarn start:dev
 ```
