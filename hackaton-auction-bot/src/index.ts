@@ -1,7 +1,7 @@
 import {Telegraf, Context} from 'telegraf';
 import 'dotenv/config';
 import {Db, MongoClient} from 'mongodb';
-import {ExampleShared} from 'hackaton-auction-common';
+import {ExampleShared, launchBot} from 'hackaton-auction-common';
 
 const example = new ExampleShared();
 example.test();
@@ -33,7 +33,7 @@ bot.command('test', ctx => {
   );
 });
 
-bot.launch();
+launchBot(bot);
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
