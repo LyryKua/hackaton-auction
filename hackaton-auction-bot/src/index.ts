@@ -25,12 +25,6 @@ bot.use(async (ctx, next) => {
   return next()
 })
 
-if (!process.env.BOT_TOKEN) {
-  throw new Error('no BOT_TOKEN provided');
-}
-
-const bot = new Telegraf(process.env.BOT_TOKEN);
-
 bot.command('test', ctx => {
   ctx.reply('Hello!');
   ctx.reply("I'm 'hackaton-auction-bot'");
