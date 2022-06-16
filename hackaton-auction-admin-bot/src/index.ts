@@ -6,6 +6,7 @@ import {
   mockAuctions,
 } from 'hackaton-auction-common';
 import {Db, MongoClient} from 'mongodb';
+import {CreateAuctionController} from './controllers/createAuction';
 
 const {BOT_TOKEN, DB_NAME, DB_URL} = process.env;
 
@@ -19,7 +20,7 @@ if (!DB_URL) {
   throw new Error('no DB_URL provided');
 }
 
-interface AppContext extends Context {
+export interface AppContext extends Context {
   db: Db;
 }
 
@@ -33,6 +34,8 @@ bot.use(async (ctx, next) => {
 
 bot.command('create', ctx => {
   ctx.reply('Створити аукціон');
+  const controller = new CreateAuctionController(bot, ctx);
+  controller.start();
 });
 
 bot.command('edit', ctx => {
@@ -41,7 +44,7 @@ bot.command('edit', ctx => {
 
 const SUPER_ADMINS = [
   // devs you can add your user id here
-  45412931,
+  45412931, 246078859,
 ];
 
 bot.command('clear_mock', async ctx => {
@@ -102,9 +105,7 @@ bot.command('show_link', (ctx, ...args) => {
     return;
   }
   console.log('id', auctionId);
-  ctx.reply(
-    `https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auctionId}`
-  );
+  ctx.reply(`https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auctionId}`);
 });
 
 bot.command('bids', ctx => {
