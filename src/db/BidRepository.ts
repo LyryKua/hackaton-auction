@@ -1,5 +1,6 @@
 import {WithId} from 'mongodb';
-import {Auction, RepositoryBase} from './AuctionRepository';
+import {Auction} from './AuctionRepository';
+import {RepositoryBase} from './BaseRepository';
 
 export interface Bid {
   userId: string;
