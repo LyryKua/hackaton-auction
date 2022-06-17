@@ -1,4 +1,4 @@
-import {Telegraf, Context} from 'telegraf';
+import {Telegraf, Context, session} from 'telegraf';
 import 'dotenv/config';
 import {Db, MongoClient} from 'mongodb';
 import {
@@ -24,16 +24,23 @@ if (!DB_URL || !DB_NAME) {
   throw new Error('DB is not configured well');
 }
 
+interface SessionData {
+  auction?: Auction;
+}
+
 interface AppContext extends Context {
   db: Db;
-  auction: Auction | null;
+  session: SessionData;
 }
 
 const bot = new Telegraf<AppContext>(process.env.BOT_TOKEN);
 
+// TODO: this is a deprecated in-memory session, we might want to use a different one
+bot.use(session());
 bot.use(async (ctx, next) => {
   const connection = await MongoClient.connect(DB_URL);
   ctx.db = connection.db(DB_NAME);
+  ctx.session ??= {};
   return next();
 });
 
@@ -46,7 +53,7 @@ bot.start(async ctx => {
     ctx.reply(JSON.stringify(await auctionRepo.findAll(), null, 2));
     return;
   }
-  ctx.auction = auction;
+  ctx.session.auction = auction;
   // console.log('auction.photos', auction.photos);
 
   const caption = `${auction.title}
@@ -78,7 +85,8 @@ bot.command('make_bid', async ctx => {
     return;
   }
   const bidAmount = Number(bidAmountStr);
-  if (!ctx.auction) {
+  const currentAuction = ctx.session.auction;
+  if (!currentAuction) {
     console.log('what do we do?');
     ctx.reply(
       'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
@@ -87,7 +95,7 @@ bot.command('make_bid', async ctx => {
   }
   const bid = {
     userId: String(ctx.message.from.id),
-    auction: ctx.auction,
+    auction: currentAuction,
     amount: bidAmount,
   };
   await bidRepository.makeBid(bid);
