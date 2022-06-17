@@ -1,7 +1,6 @@
-import {session, Telegraf} from 'telegraf';
+import {Telegraf, Scenes, session} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
-import {CreateAuctionController} from './controllers/createAuction';
 import {AppContext} from './types';
 import {AuctionRepository} from './db/AuctionRepository';
 import {mockAuctions} from './db/mockData';
@@ -10,7 +9,75 @@ import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
 import {VolunteerRepository} from './db/Volunteer';
-import {BidRepository} from "./db/BidRepository";
+import {BidRepository} from './db/BidRepository';
+
+const CreateAuctionScene = 'CREATE_AUCTION_SCENE2';
+
+const auctionFields = [
+  {id: 'title', prompt: 'Назва аукціону'},
+  {id: 'description', prompt: 'Опис аукціону'},
+  {id: 'photos', prompt: 'Додай мінімум одне фото'},
+  {id: 'startBet', prompt: 'Яка початкова ставка?'},
+];
+const createAuctionScene = new Scenes.BaseScene<AppContext>(CreateAuctionScene);
+createAuctionScene.enter(async ctx => {
+  let currentStep = 0;
+  const next = async () => {
+    currentStep++;
+    if (currentStep < auctionFields.length) {
+      ctx.reply(auctionFields[currentStep].prompt);
+    } else {
+      const repo = new AuctionRepository(ctx.db);
+      const auction = await repo.create({
+        ...ctx.session.auctionData,
+        volunteerId: 1,
+      });
+      ctx.reply(`Вітаю!
+Аукціон створено.
+Наступний крок — залучити якнайбільше учасників.
+Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction.id}`);
+      createAuctionScene.leave();
+    }
+  };
+  ctx.reply('Entered scene');
+
+  ctx.reply(auctionFields[currentStep].prompt);
+  ctx.session.auctionData = {};
+  createAuctionScene.on('text', async ctx => {
+    const currentField = auctionFields[currentStep].id;
+    switch (currentField) {
+      case 'title': {
+        ctx.session.auctionData.title = ctx.message.text;
+        await next();
+        break;
+      }
+      case 'description': {
+        ctx.session.auctionData.description = ctx.message.text;
+        await next();
+        break;
+      }
+      case 'startBet': {
+        ctx.session.auctionData.startBet = ctx.message.text;
+        await next();
+        break;
+      }
+      default:
+        break;
+    }
+  });
+  createAuctionScene.on('photo', async ctx => {
+    const currentField = auctionFields[currentStep].id;
+    switch (currentField) {
+      case 'photos': {
+        ctx.session.auctionData.photos = ctx.message.photo;
+        await next();
+        break;
+      }
+      default:
+        break;
+    }
+  });
+});
 
 const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
 if (!BOT_ADMIN_TOKEN) {
@@ -25,7 +92,7 @@ if (!DB_URL) {
 
 export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
 
-adminBot.use(Telegraf.log())
+adminBot.use(Telegraf.log());
 
 adminBot.use(async (ctx, next) => {
   const connection = await MongoClient.connect(DB_URL);
@@ -44,11 +111,12 @@ adminBot.start(async ctx => {
     chatId: ctx.chat.id,
   });
 });
+const stage = new Scenes.Stage<Scenes.SceneContext>([createAuctionScene]);
+adminBot.use(stage.middleware());
 
 adminBot.command('create', ctx => {
-  ctx.reply('Створити аукціон');
-  const controller = new CreateAuctionController(adminBot, ctx);
-  controller.start();
+  // @ts-ignore
+  ctx.scene.enter(CreateAuctionScene);
 });
 
 adminBot.command('edit', ctx => {
@@ -65,7 +133,7 @@ const SUPER_ADMINS = [
 adminBot.command('clear_mock', async ctx => {
   const userId = ctx.message.from.id;
   if (!SUPER_ADMINS.includes(userId)) {
-    ctx.reply(`Сильно хитрий?`);
+    ctx.reply('Сильно хитрий?');
     return;
   }
   const auctionRepo = new AuctionRepository(ctx.db);
@@ -86,31 +154,43 @@ adminBot.command('list_a', async ctx => {
   const auctions = await auctionRepo.findAll();
   await ctx.reply('Here they all are right from the DB', {
     reply_markup: {
-      inline_keyboard: auctions.map(auction => ([{
-        text: auction.title,
-        callback_data: auction.id,
-      }]))
-    }
+      inline_keyboard: auctions.map(auction => [
+        {
+          text: auction.title,
+          callback_data: auction.id,
+        },
+      ]),
+    },
   });
 
-  adminBot.action(auctions.map(a => a.id), async (ctx) => {
-    const matchedAuction = auctions.find(auction => auction.id === ctx.match[0])
-    await ctx.reply(JSON.stringify(matchedAuction, null, 2), {
-      reply_markup: {
-        inline_keyboard: matchedAuction?.betIds.map(betId => [{
-          text: betId,
-          callback_data: betId,
-        }]) ?? []
-      }
-    });
+  adminBot.action(
+    auctions.map(a => a.id),
+    async ctx => {
+      const matchedAuction = auctions.find(
+        auction => auction.id === ctx.match[0]
+      );
+      await ctx.reply(JSON.stringify(matchedAuction, null, 2), {
+        reply_markup: {
+          inline_keyboard:
+            matchedAuction?.betIds.map(betId => [
+              {
+                text: betId,
+                callback_data: betId,
+              },
+            ]) ?? [],
+        },
+      });
 
-    adminBot.action(matchedAuction?.betIds ?? [], async (ctx) => {
-      const betRepo = new BidRepository(ctx.db)
-      const matchedBetId = matchedAuction!.betIds.find(betId => betId === ctx.match[0])
-      const bet = await betRepo.findBetById(matchedBetId!)
-      await ctx.reply(JSON.stringify(bet, null, 2));
-    })
-  })
+      adminBot.action(matchedAuction?.betIds ?? [], async ctx => {
+        const betRepo = new BidRepository(ctx.db);
+        const matchedBetId = matchedAuction!.betIds.find(
+          betId => betId === ctx.match[0]
+        );
+        const bet = await betRepo.findBetById(matchedBetId!);
+        await ctx.reply(JSON.stringify(bet, null, 2));
+      });
+    }
+  );
 });
 
 adminBot.command('list_bits', async ctx => {
