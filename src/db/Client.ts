@@ -1,4 +1,5 @@
 import {RepositoryBase, WithoutId} from './BaseRepository';
+import {ObjectId} from "mongodb";
 
 export interface Client {
   id: string;
@@ -35,7 +36,7 @@ export class ClientRepository extends RepositoryBase<Client> {
 
   async findById(userId: string): Promise<Client | null> {
     return this.collection().findOne({
-      _id: new Object(userId),
+      _id: new ObjectId(userId),
     });
   }
 

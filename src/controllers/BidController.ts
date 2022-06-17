@@ -68,7 +68,7 @@ export class BidVolunteerController extends BidControllerBase<AppContext> {
 
     await this.ctx.reply(
       `Найбільша ставка: ${highestBid.amount} від ${
-        user ? `${user.username}` : highestBid.clientId
+        user ? `@${user.username}` : highestBid.clientId
       }`
     );
   }
