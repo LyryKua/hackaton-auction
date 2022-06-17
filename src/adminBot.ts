@@ -22,6 +22,8 @@ if (!DB_URL) {
 
 export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
 
+adminBot.use(Telegraf.log())
+
 adminBot.use(async (ctx, next) => {
   const connection = await MongoClient.connect(DB_URL);
   ctx.db = connection.db(DB_NAME);
@@ -83,8 +85,19 @@ adminBot.command('fill_mock', async ctx => {
 adminBot.command('list_a', async ctx => {
   const auctionRepo = new AuctionRepository(ctx.db);
   const auctions = await auctionRepo.findAll();
-  await ctx.reply('Here they all are right from the DB');
-  await ctx.reply(JSON.stringify(auctions, null, 2));
+  await ctx.reply('Here they all are right from the DB', {
+    reply_markup: {
+      inline_keyboard: [auctions.map(auction => ({
+        text: auction.title,
+        callback_data: auction.id,
+      }))]
+    }
+  });
+
+  adminBot.action(auctions.map(a => a.id), async (ctx) => {
+    const matchedAuctions = auctions.find(auction => auction.id === ctx.match[0])
+    await ctx.reply(JSON.stringify(matchedAuctions, null, 2));
+  })
 });
 
 adminBot.command('list_bits', async ctx => {
