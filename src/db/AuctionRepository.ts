@@ -5,14 +5,14 @@ import {RepositoryBase} from './BaseRepository';
 export const AUCTIONS_COLLECTION = 'auctions';
 
 export type Auction = {
-  id: string
+  id: string;
   title: string;
   description: string;
   photos: PhotoSize[];
   startBet: number;
   volunteerId: string;
   status: 'opened' | 'closed';
-}
+};
 
 export type NewAuction = Omit<Auction, 'id'>;
 
@@ -54,7 +54,7 @@ export class AuctionRepository extends RepositoryBase<Auction> {
   }
 
   async deleteMany(filter: Filter<Auction> = {}) {
-    await this.db.collection(AUCTIONS_COLLECTION).deleteMany(filter)
+    await this.db.collection(AUCTIONS_COLLECTION).deleteMany(filter);
   }
 
   findAll(): Promise<Auction[]> {

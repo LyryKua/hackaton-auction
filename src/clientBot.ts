@@ -1,7 +1,7 @@
 import {Telegraf, session} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
-import {AppContext, ClientAppContext} from './types';
+import {ClientAppContext} from './types';
 import {AuctionRepository} from './db/AuctionRepository';
 import {
   BidController,
