@@ -7,7 +7,7 @@ export interface Auction {
   description: string;
   photos: PhotoSize[];
   startBet: number;
-  volunteerId: number;
+  volunteerId: number | string;
 }
 
 export interface Bid {
