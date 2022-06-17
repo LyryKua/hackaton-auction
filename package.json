@@ -1,31 +1,31 @@
 {
-  "name": "hackaton-auction",
+  "name": "hackaton-bots",
   "version": "1.0.0",
   "main": ".prettierrc.js",
   "author": "",
   "license": "ISC",
   "description": "",
-  "private": true,
-  "workspaces": [
-    "hackaton-bots"
-  ],
+  "scripts": {
+    "clean": "rm -rf ./build node_modules",
+    "build": "tsc",
+    "start": "node ./build/index.js",
+    "start:dev": "ts-node src/index.ts",
+    "lint": "gts lint",
+    "lint:fix": "gts fix",
+    "watch": "nodemon -e ts -w src -x npm run watch:serve",
+    "watch:serve": "ts-node src/adminBot.ts"
+  },
   "dependencies": {
     "dotenv": "^16.0.1",
+    "mongodb": "^4.7.0",
+    "nodemon": "^2.0.16",
     "telegraf": "^4.8.5"
-  },
-  "scripts": {
-    "clean": "rm -rf build node_modules **/node_modules **/build",
-    "build": "wsrun --stages build",
-    "start": "wsrun --exclude hackaton-auction-common --stages start",
-    "lint": "gts lint",
-    "lint:fix": "gts fix"
   },
   "devDependencies": {
     "@types/node": "^14.11.2",
     "gts": "^3.1.0",
     "prettier": "^2.7.0",
     "ts-node": "^10.8.1",
-    "typescript": "^4.7.3",
-    "wsrun": "^5.2.4"
+    "typescript": "^4.7.3"
   }
 }
