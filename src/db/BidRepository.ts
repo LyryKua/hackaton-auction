@@ -1,30 +1,34 @@
-import {ObjectId, WithId} from 'mongodb';
-import {Auction} from './AuctionRepository';
+import {Db, Filter, ObjectId, WithId} from 'mongodb';
 import {RepositoryBase} from './BaseRepository';
+import {randomUUID} from "crypto";
 
-export interface Bid {
-  userId: string;
-  auction: Auction;
+export const BIDS_COLLECTION = 'bids';
+
+export type Bid = {
+  id: string;
+  auctionId: string;
+  clientId: string;
   amount: number;
-  createdAt: Date;
 }
 
-type DbBid = WithId<{
-  userId: string;
-  auctionId: string;
-  amount: number;
-  createdAt: Date;
-}>;
+type DbBid = WithId<Bid>;
 
 export class BidRepository extends RepositoryBase<Bid> {
-  collectionName = 'bets';
 
-  async makeBid(bid: Omit<Bid, 'createdAt'>) {
+  constructor(db: Db) {
+    super(BIDS_COLLECTION, db);
+  }
+
+  async deleteMany(filter: Filter<Bid> = {}) {
+    await this.db.collection(BIDS_COLLECTION).deleteMany(filter)
+  }
+
+  async makeBid(bid: Omit<Bid, 'createdAt' | 'id'>) {
     return await this.collection<Omit<DbBid, '_id'>>().insertOne({
+      id: randomUUID(),
       amount: bid.amount,
-      auctionId: bid.auction.id,
-      createdAt: new Date(),
-      userId: bid.userId,
+      auctionId: bid.auctionId,
+      clientId: bid.clientId,
     });
   }
 

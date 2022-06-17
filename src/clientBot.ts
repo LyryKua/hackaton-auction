@@ -42,7 +42,7 @@ clientBot.start(async ctx => {
     return;
   }
   ctx.session.auction = auction;
-  const clientRepository = new ClientRepository(ctx.db);
+  const clientRepository = new ClientRepository('clients', ctx.db);
   ctx.session.client = await clientRepository.register({
     telegramId: ctx.from.id,
     username: ctx.from.username,

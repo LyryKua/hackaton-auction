@@ -2,14 +2,15 @@ import {Db, Filter, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
 import {RepositoryBase} from './BaseRepository';
 
-export interface Auction {
-  id: string;
+export const AUCTIONS_COLLECTION = 'auctions';
+
+export type Auction = {
+  id: string
   title: string;
   description: string;
   photos: PhotoSize[];
   startBet: number;
   volunteerId: string;
-  betIds: string[];
   status: 'opened' | 'closed';
 }
 
@@ -36,15 +37,8 @@ const transformAuction = ({_id, status, ...auction}: DBAuction): Auction => ({
 });
 
 export class AuctionRepository extends RepositoryBase<Auction> {
-  readonly collectionName: string = 'auctions';
-
-  async create(auction: NewAuction): Promise<Auction> {
-    const {insertedId} = await this.collection<NewAuction>().insertOne(auction);
-    return {
-      ...auction,
-      id: insertedId.toString(),
-      status: 'opened',
-    };
+  constructor(db: Db) {
+    super(AUCTIONS_COLLECTION, db);
   }
 
   async close(auctionId: string, volunteerId: string) {
@@ -59,8 +53,8 @@ export class AuctionRepository extends RepositoryBase<Auction> {
     );
   }
 
-  async createMany(auctions: NewAuction[]): Promise<void> {
-    await this.collection<NewAuction>().insertMany(auctions);
+  async deleteMany(filter: Filter<Auction> = {}) {
+    await this.db.collection(AUCTIONS_COLLECTION).deleteMany(filter)
   }
 
   findAll(): Promise<Auction[]> {
@@ -87,10 +81,6 @@ export class AuctionRepository extends RepositoryBase<Auction> {
       return null;
     }
     return transformAuction(auction);
-  }
-
-  async deleteMany(filter: Filter<Auction> = {}) {
-    await this.collection().deleteMany({});
   }
 
   async update(id: string, betId: string) {

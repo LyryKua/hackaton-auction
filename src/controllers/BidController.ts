@@ -1,6 +1,6 @@
 import {Context, NarrowedContext, Telegraf} from 'telegraf';
 import {AppContext, ClientAppContext} from '../types';
-import {BidRepository} from '../db/BidRepository';
+import {Bid, BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
 import {AuctionRepository} from '../db/AuctionRepository';
 import {ClientRepository} from '../db/Client';
@@ -30,7 +30,6 @@ export class BidController extends BidControllerBase<ClientAppContext> {
     const bidAmount = Number(bidAmountStr);
     const currentAuction = this.ctx.session.auction;
     if (!currentAuction) {
-      console.log('what do we do?');
       await this.ctx.reply(
         'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
       );
@@ -38,9 +37,10 @@ export class BidController extends BidControllerBase<ClientAppContext> {
     }
 
     const bid = {
-      userId: client.id,
-      auction: currentAuction,
+      clientId: client.id,
+      auctionId: currentAuction.id,
       amount: bidAmount,
+
     };
     const newBid = await bidRepository.makeBid(bid);
     console.log('test42', newBid.insertedId.toString(), currentAuction.id);
@@ -63,12 +63,12 @@ export class BidVolunteerController extends BidControllerBase<AppContext> {
       return;
     }
     const highestBid = await bidRepository.findHighest(activeAuction.id);
-    const clientRepo = new ClientRepository(this.ctx.db);
-    const user = await clientRepo.findById(highestBid.userId);
+    const clientRepo = new ClientRepository('clients', this.ctx.db);
+    const user = await clientRepo.findById(highestBid.clientId);
 
     await this.ctx.reply(
       `Найбільша ставка: ${highestBid.amount} від ${
-        user ? `${user.username}` : highestBid.userId
+        user ? `${user.username}` : highestBid.clientId
       }`
     );
   }

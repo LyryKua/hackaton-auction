@@ -2,19 +2,24 @@ import {Telegraf, Scenes, session, Context, Middleware} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
 import {AppContext, VolunteerSessionData} from './types';
-import {AuctionRepository, NewAuction} from './db/AuctionRepository';
-import {mockAuctions} from './db/mockData';
+import {Auction, AuctionRepository, NewAuction} from './db/AuctionRepository';
+import {arrayOf, mockAuction, mockAuctions, mockBid} from './db/mockData';
 import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
-import {VolunteerRepository} from './db/Volunteer';
+import {VolunteerRepository} from './db/VolunteerRepository';
 import {BidRepository} from './db/BidRepository';
 import {
   SceneContextScene,
   SceneSession,
   SceneSessionData,
 } from 'telegraf/typings/scenes';
+import {AuctionService} from "./services/AuctionService";
+import {randomUUID} from "crypto";
+import {PhotoSize} from "typegram";
+import {VolunteerService} from "./services/VolunteerService";
+import {BidService} from "./services/BidService";
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -86,7 +91,7 @@ adminBot.use(async (ctx, next) => {
   console.log('volunteer', volunteer);
   if (volunteer) {
     ctx.session.activeAuction =
-      (await auctionRepo.findActive(volunteer.id)) || undefined;
+      (await auctionRepo.findActive(volunteer.id!)) || undefined;
     console.log('ctx.session.activeAuction', ctx.session.activeAuction);
   }
   return next();
@@ -120,11 +125,14 @@ createAuctionScene.enter(async ctx => {
     if (currentStep < auctionFields.length) {
       await ctx.reply(auctionFields[currentStep].prompt);
     } else {
-      const repo = new AuctionRepository(ctx.db);
-      const auction = await repo.create({
+      const auctionsService = new AuctionService(ctx.db)
+      const auction: Auction = {
         ...ctx.session.auctionData,
-        volunteerId: volunteer.id,
-      });
+        id: randomUUID(),
+        volunteerId: ctx.session.volunteer?.id!,
+        status: 'opened',
+      }
+      await auctionsService.create(auction)
       ctx.session.activeAuction = auction;
       await ctx.reply(`Вітаю!
 Аукціон створено.
@@ -139,9 +147,8 @@ createAuctionScene.enter(async ctx => {
     description: '',
     photos: [],
     startBet: 0,
-    volunteerId: volunteer.id,
+    volunteerId: volunteer.id!,
     status: 'opened',
-    betIds: [], // I don't think we need this
   };
   createAuctionScene.on('text', async ctx => {
     const currentField = auctionFields[currentStep].id;
@@ -180,6 +187,16 @@ createAuctionScene.enter(async ctx => {
 });
 
 adminBot.start(async ctx => {
+  const volunteerService = new VolunteerService(ctx.db)
+
+  const { id: telegramId } = ctx.from
+  const volunteer = {
+    id: randomUUID(),
+    telegramId,
+  }
+  await volunteerService.create(volunteer)
+  ctx.session.volunteer = volunteer;
+
   await ctx.reply(` 
 Вітаю!
 
@@ -197,12 +214,6 @@ adminBot.start(async ctx => {
 
 Не гаємо часу і розпочинаємо! 
 Успіхів.`);
-  const volunteerRepository = new VolunteerRepository(ctx.db);
-  ctx.session.volunteer = await volunteerRepository.register({
-    telegramId: ctx.from.id,
-    username: ctx.from.username,
-    chatId: ctx.chat.id,
-  });
 });
 
 // type AuctionStageContext = WrapSceneContext<AuctionSceneContext>;
@@ -232,17 +243,28 @@ adminBot.command('clear_mock', async ctx => {
     ctx.reply('Сильно хитрий?');
     return;
   }
-  const auctionRepo = new AuctionRepository(ctx.db);
-  await auctionRepo.deleteMany();
-  await ctx.reply('DB cleared');
+  const auctionsService = new AuctionService(ctx.db)
+  await auctionsService.deleteAll()
+
+  const bidService = new BidService(ctx.db)
+  await bidService.deleteAll()
 });
 
 adminBot.command('fill_mock', async ctx => {
-  const auctionRepo = new AuctionRepository(ctx.db);
-  const username = ctx.message.from.username;
-  const userId = ctx.message.from.id;
-  await auctionRepo.createMany(mockAuctions(username || String(userId)));
-  ctx.reply('Created a couple of mock auctions for you, anything else?');
+  const auctions = arrayOf(3, () => mockAuction())
+  const bids = arrayOf(6, () => mockBid())
+
+  const auctionsService = new AuctionService(ctx.db)
+  for (const auction of auctions) {
+    await auctionsService.create(auction);
+  }
+
+  const bidService = new BidService(ctx.db)
+  for (const bid of bids) {
+    await bidService.create(bid);
+  }
+
+  await ctx.reply('Created a couple of mock auctions for you, anything else?');
 });
 
 adminBot.command('list_a', async ctx => {
@@ -265,26 +287,7 @@ adminBot.command('list_a', async ctx => {
       const matchedAuction = auctions.find(
         auction => auction.id === ctx.match[0]
       );
-      await ctx.reply(JSON.stringify(matchedAuction, null, 2), {
-        reply_markup: {
-          inline_keyboard:
-            matchedAuction?.betIds.map(betId => [
-              {
-                text: betId,
-                callback_data: betId,
-              },
-            ]) ?? [],
-        },
-      });
-
-      adminBot.action(matchedAuction?.betIds ?? [], async ctx => {
-        const betRepo = new BidRepository(ctx.db);
-        const matchedBetId = matchedAuction!.betIds.find(
-          betId => betId === ctx.match[0]
-        );
-        const bet = await betRepo.findBetById(matchedBetId!);
-        await ctx.reply(JSON.stringify(bet, null, 2));
-      });
+      await ctx.reply(JSON.stringify(matchedAuction, null, 2));
     }
   );
 });
@@ -301,7 +304,7 @@ adminBot.command('send_message_to_user', async ctx => {
     string,
     string
   ];
-  const clientRepository = new ClientRepository(ctx.db);
+  const clientRepository = new ClientRepository('clients', ctx.db);
   const client = await clientRepository.findClientByUsername(
     username.replace('@', '')
   );
@@ -348,8 +351,8 @@ adminBot.command('close', async ctx => {
     return;
   }
   const highestBid = await bidRepository.findHighest(activeAuction.id);
-  const clientRepository = new ClientRepository(ctx.db);
-  const client = await clientRepository.findById(highestBid.userId);
+  const clientRepository = new ClientRepository('clients', ctx.db);
+  const client = await clientRepository.findById(highestBid.clientId);
   if (!client) {
     await ctx.reply(
       'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
