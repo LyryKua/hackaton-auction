@@ -1,4 +1,4 @@
-import {Telegraf} from 'telegraf';
+import {session, Telegraf} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
 import {CreateAuctionController} from './controllers/createAuction';
@@ -9,6 +9,7 @@ import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
+import {VolunteerRepository} from './db/Volunteer';
 
 const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
 
@@ -30,9 +31,16 @@ adminBot.use(async (ctx, next) => {
   return next();
 });
 
+adminBot.use(session());
 adminBot.start(async ctx => {
   console.log(ctx.message);
   console.log(ctx.from);
+  const volunteerRepository = new VolunteerRepository(ctx.db);
+  ctx.session.volunteer = await volunteerRepository.register({
+    telegramId: ctx.from.id,
+    username: ctx.from.username,
+    chatId: ctx.chat.id,
+  });
 });
 
 adminBot.command('create', ctx => {

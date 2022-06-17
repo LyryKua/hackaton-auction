@@ -2,6 +2,7 @@ import {Context} from 'telegraf';
 import {Db} from 'mongodb';
 import {Auction} from '../db/AuctionRepository';
 import {Client} from '../db/Client';
+import {Volunteer} from '../db/Volunteer';
 
 export interface ClientSessionData {
   auction?: Auction;
@@ -13,7 +14,11 @@ export interface ClientAppContext extends Context {
   session: ClientSessionData;
 }
 
+export interface VolunteerSessionData {
+  volunteer?: Volunteer;
+}
 
 export interface AppContext extends Context {
   db: Db;
+  session: VolunteerSessionData;
 }
