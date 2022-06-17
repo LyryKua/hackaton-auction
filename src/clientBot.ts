@@ -61,7 +61,6 @@ clientBot.command('test', ctx => {
 });
 
 clientBot.command('make_bid', async ctx => {
-  const text = ctx.message
   const betController = new BidController(clientBot as any, ctx);
 
   betController.makeBid();
