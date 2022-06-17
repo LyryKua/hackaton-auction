@@ -2,10 +2,10 @@ import {Context, NarrowedContext, Telegraf} from 'telegraf';
 import {AppContext, ClientAppContext} from '../types';
 import {BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
+import {AuctionRepository} from "../db/AuctionRepository";
 
 class BidControllerBase<C extends Context> {
   constructor(
-    protected bot: Telegraf<C>,
     protected ctx: NarrowedContext<C, MountMap['text']>
   ) {}
 }
@@ -13,6 +13,7 @@ class BidControllerBase<C extends Context> {
 export class BidController extends BidControllerBase<ClientAppContext> {
   async makeBid() {
     const bidRepository = new BidRepository(this.ctx.db);
+    const auctionRepository = new AuctionRepository(this.ctx.db)
     const bidAmountStr = this.ctx.message.text.split(' ')[1];
     if (String(Number(bidAmountStr)) !== bidAmountStr) {
       await this.ctx.reply(
@@ -34,7 +35,11 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       auction: currentAuction,
       amount: bidAmount,
     };
-    await bidRepository.makeBid(bid);
+    const newBid = await bidRepository.makeBid(bid);
+    console.log('test42', newBid.insertedId.toString(), currentAuction.id);
+    await auctionRepository.update(currentAuction.id, newBid.insertedId.toString())
+    const tmp = await auctionRepository.findOne(currentAuction.id)
+    console.log(tmp);
     await this.ctx.reply('Ставка прийнята');
   }
 }
