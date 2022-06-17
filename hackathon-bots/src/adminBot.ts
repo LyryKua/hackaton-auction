@@ -1,19 +1,17 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {
-  AuctionRepository,
-  BidController,
-  launchBot,
-  mockAuctions,
-} from 'hackaton-auction-common';
 import {MongoClient} from 'mongodb';
 import {CreateAuctionController} from './controllers/createAuction';
-import {AppContext} from 'hackaton-auction-common/src/types';
+import {AppContext} from './types';
+import {AuctionRepository} from './db/AuctionRepository';
+import {mockAuctions} from './db/mockData';
+import {BidController} from './controllers/BidController';
+import {launchBot} from './launchBot';
 
-const {BOT_TOKEN, DB_NAME, DB_URL} = process.env;
+const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
 
-if (!BOT_TOKEN) {
-  throw new Error('no BOT_TOKEN provided');
+if (!BOT_ADMIN_TOKEN) {
+  throw new Error('no BOT_ADMIN_TOKEN provided');
 }
 if (!DB_NAME) {
   throw new Error('no DB_NAME provided');
@@ -22,21 +20,21 @@ if (!DB_URL) {
   throw new Error('no DB_URL provided');
 }
 
-const bot = new Telegraf<AppContext>(BOT_TOKEN);
+export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
 
-bot.use(async (ctx, next) => {
+adminBot.use(async (ctx, next) => {
   const connection = await MongoClient.connect(DB_URL);
   ctx.db = connection.db(DB_NAME);
   return next();
 });
 
-bot.command('create', ctx => {
+adminBot.command('create', ctx => {
   ctx.reply('Створити аукціон');
-  const controller = new CreateAuctionController(bot, ctx);
+  const controller = new CreateAuctionController(adminBot, ctx);
   controller.start();
 });
 
-bot.command('edit', ctx => {
+adminBot.command('edit', ctx => {
   ctx.reply('Редагувати');
 });
 
@@ -45,7 +43,7 @@ const SUPER_ADMINS = [
   45412931, 246078859,
 ];
 
-bot.command('clear_mock', async ctx => {
+adminBot.command('clear_mock', async ctx => {
   const userId = ctx.message.from.id;
   if (!SUPER_ADMINS.includes(userId)) {
     ctx.reply('Сильно хитрий?');
@@ -54,7 +52,7 @@ bot.command('clear_mock', async ctx => {
   ctx.reply(
     'You are about to clear Auctions collection, like I mean are you mad? You sure? Y / N'
   );
-  bot.on('text', async ctx => {
+  adminBot.on('text', async ctx => {
     const text = ctx.message.text;
     switch (text) {
       case 'N':
@@ -72,7 +70,7 @@ bot.command('clear_mock', async ctx => {
   console.log('userId', userId);
 });
 
-bot.command('fill_mock', async ctx => {
+adminBot.command('fill_mock', async ctx => {
   const auctionRepo = new AuctionRepository(ctx.db);
   const username = ctx.message.from.username;
   const userId = ctx.message.from.id;
@@ -80,20 +78,20 @@ bot.command('fill_mock', async ctx => {
   ctx.reply('Created a couple of mock auctions for you, anything else?');
 });
 
-bot.command('list_a', async ctx => {
+adminBot.command('list_a', async ctx => {
   const auctionRepo = new AuctionRepository(ctx.db);
   const auctions = await auctionRepo.findAll();
   ctx.reply('Here they all are right from the DB');
   ctx.reply(JSON.stringify(auctions, null, 2));
 });
 
-bot.command('list_bits', async ctx => {
+adminBot.command('list_bits', async ctx => {
   ctx.reply('List of bids');
-  const bidsController = new BidController(bot, ctx);
+  const bidsController = new BidController(adminBot, ctx);
   bidsController.getListOfBets();
 });
 
-bot.command('about', ctx => {
+adminBot.command('about', ctx => {
   console.log('about');
   ctx.reply(`Користуватися ботом дуже легко. Дивися:
 /create - Створити аукціон. Придумай назву для аукціону, додай фото, початкову ставку та опис (деталі, ціль збору коштів та все, щоб заохотити учасників).
@@ -102,7 +100,7 @@ bot.command('about', ctx => {
 `);
 });
 
-bot.command('show_link', (ctx, ...args) => {
+adminBot.command('show_link', (ctx, ...args) => {
   const auctionId = ctx.message.text.split(' ')[1];
   if (!auctionId) {
     ctx.reply('please pass the id, run /show_link ID');
@@ -112,17 +110,17 @@ bot.command('show_link', (ctx, ...args) => {
   ctx.reply(`https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auctionId}`);
 });
 
-bot.command('bids', async ctx => {
-  const bidController = new BidController(bot, ctx);
+adminBot.command('bids', async ctx => {
+  const bidController = new BidController(adminBot, ctx);
   bidController.getHighestBet();
 });
 
-bot.command('close', ctx => {
+adminBot.command('close', ctx => {
   ctx.reply('Закрити аукціон');
 });
 
-launchBot(bot);
+launchBot(adminBot);
 
 // Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => adminBot.stop('SIGINT'));
+process.once('SIGTERM', () => adminBot.stop('SIGTERM'));

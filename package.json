@@ -7,16 +7,14 @@
   "description": "",
   "private": true,
   "workspaces": [
-    "hackaton-auction-admin-bot",
-    "hackaton-auction-bot",
-    "hackaton-auction-common"
+    "hackaton-bots"
   ],
   "dependencies": {
     "dotenv": "^16.0.1",
     "telegraf": "^4.8.5"
   },
   "scripts": {
-    "clean": "rm -rf build node_modules",
+    "clean": "rm -rf build node_modules **/node_modules **/build",
     "build": "wsrun --stages build",
     "start": "wsrun --exclude hackaton-auction-common --stages start",
     "lint": "gts lint",

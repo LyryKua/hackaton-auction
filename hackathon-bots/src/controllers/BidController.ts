@@ -1,13 +1,17 @@
-import {Telegraf} from 'telegraf';
-import {BidRepository} from '../db/BidRepository';
+import {NarrowedContext, Telegraf} from 'telegraf';
 import {AppContext} from '../types';
+import {BidRepository} from '../db/BidRepository';
+import {MountMap} from 'telegraf/typings/telegram-types';
 
 export class BidController {
-  constructor(private bot: Telegraf<AppContext>, private ctx: AppContext) {}
+  constructor(
+    private bot: Telegraf<AppContext>,
+    private ctx: NarrowedContext<AppContext, MountMap['text']>
+  ) {}
 
   async makeBid() {
     const bidRepository = new BidRepository(this.ctx.db);
-    const bidAmountStr = this.ctx.message?.text.split(' ')[1];
+    const bidAmountStr = this.ctx.message.text.split(' ')[1];
     if (String(Number(bidAmountStr)) !== bidAmountStr) {
       this.ctx.reply(
         'Бумласочка, введіть суму цифрами в форматі /make_bid 1000'
