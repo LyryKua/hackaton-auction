@@ -3,7 +3,10 @@ import 'dotenv/config';
 import {MongoClient} from 'mongodb';
 import {AppContext, ClientAppContext} from './types';
 import {AuctionRepository} from './db/AuctionRepository';
-import {BidController, BidVolunteerController} from './controllers/BidController';
+import {
+  BidController,
+  BidVolunteerController,
+} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 
@@ -50,27 +53,50 @@ clientBot.start(async ctx => {
   const caption = `${auction.title}
 ${auction.description}`;
   ctx.reply(caption);
-  await ctx.replyWithPhoto(auction.photos[0].file_id, {
-    caption,
-  });
+  const photoSizes = auction.photos;
+  console.log(
+    'photo sizes',
+    photoSizes,
+    photoSizes[photoSizes.length - 1].file_id
+  );
+  try {
+    await ctx.replyWithPhoto(photoSizes[photoSizes.length - 1].file_id, {
+      caption,
+    });
+  } catch (err) {
+    await ctx.reply(caption);
+  }
 });
 
-clientBot.command('test', ctx => {
+clientBot.command('test', async ctx => {
   ctx.reply('Hello!');
   ctx.reply("I'm 'hackaton-auction-bot'");
   ctx.reply(
     `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
   );
-  clientBot.on('photo', ctx => {
-    ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
-    ctx.replyWithPhoto(ctx.message.photo[0].file_id);
-  });
+  await ctx.replyWithPhoto(
+    'AgACAgIAAxkBAAMfYqslt567Db5L6qnn0a7RjFM9OnYAAlq8MRvH22FJgbWozqFukfgBAAMCAANzAAMkBA'
+  );
+  await ctx.reply(
+    (
+      await clientBot.telegram.getFileLink(
+        'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
+      )
+    ).href
+  );
+  await ctx.replyWithPhoto(
+    'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
+  );
+  // clientBot.on('photo', ctx => {
+  //   ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
+  //   ctx.replyWithPhoto(ctx.message.photo[0].file_id);
+  // });
 });
 
 clientBot.command('make_bid', async ctx => {
   const betController = new BidController(ctx);
 
-  betController.makeBid();
+  await betController.makeBid();
 });
 
 clientBot.command('subscribe', ctx => {
@@ -90,10 +116,10 @@ clientBot.command('about', ctx => {
 });
 
 clientBot.command('all', async ctx => {
-  const tmp = new BidVolunteerController(ctx as any)
+  const tmp = new BidVolunteerController(ctx as any);
 
-  await tmp.getListOfBets()
-})
+  await tmp.getListOfBets();
+});
 
 launchBot(clientBot);
 

@@ -1,8 +1,9 @@
 import {NewAuction} from './AuctionRepository';
 
-export const mockAuctions = (volunteerId: number | string): NewAuction[] => [
+export const mockAuctions = (volunteerId: string): NewAuction[] => [
   {
     title: 'Перший аукціон',
+    status: 'opened',
     photos: [
       {
         file_id:
@@ -37,6 +38,7 @@ export const mockAuctions = (volunteerId: number | string): NewAuction[] => [
   },
   {
     title: 'Другий аукціон',
+    status: 'closed',
     photos: [
       {
         file_id:

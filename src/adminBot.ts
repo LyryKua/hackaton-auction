@@ -57,6 +57,41 @@ interface AuctionSceneContext extends AppContext {
 //   session: WrapSceneSession<C['session'], SSD>;
 // };
 
+const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
+if (!BOT_ADMIN_TOKEN) {
+  throw new Error('no BOT_ADMIN_TOKEN provided');
+}
+if (!DB_NAME) {
+  throw new Error('no DB_NAME provided');
+}
+if (!DB_URL) {
+  throw new Error('no DB_URL provided');
+}
+
+export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
+
+adminBot.use(Telegraf.log());
+adminBot.use(session());
+
+adminBot.use(async (ctx, next) => {
+  const connection = await MongoClient.connect(DB_URL);
+  ctx.db = connection.db(DB_NAME);
+  ctx.session ??= {};
+  return next();
+});
+
+adminBot.use(async (ctx, next) => {
+  const auctionRepo = new AuctionRepository(ctx.db);
+  const volunteer = ctx.session.volunteer;
+  console.log('volunteer', volunteer);
+  if (volunteer) {
+    ctx.session.activeAuction =
+      (await auctionRepo.findActive(volunteer.id)) || undefined;
+    console.log('ctx.session.activeAuction', ctx.session.activeAuction);
+  }
+  return next();
+});
+
 const createAuctionScene = new Scenes.BaseScene<AuctionSceneContext>(
   CREATE_AUCTION_SCENE
 );
@@ -70,6 +105,16 @@ createAuctionScene.enter(async ctx => {
     createAuctionScene.leave();
     return;
   }
+  if (ctx.session.activeAuction) {
+    if (ctx.session.activeAuction.status === 'closed') {
+      delete ctx.session.activeAuction;
+    } else {
+      await ctx.reply(
+        'В вас вже є активний аукціон, нажаль ми наразі тільки один. Ви зможете створити новий, коли закінчите цей.'
+      );
+      return;
+    }
+  }
   const next = async () => {
     currentStep++;
     if (currentStep < auctionFields.length) {
@@ -78,8 +123,9 @@ createAuctionScene.enter(async ctx => {
       const repo = new AuctionRepository(ctx.db);
       const auction = await repo.create({
         ...ctx.session.auctionData,
-        volunteerId: 1,
+        volunteerId: volunteer.id,
       });
+      ctx.session.activeAuction = auction;
       await ctx.reply(`Вітаю!
 Аукціон створено.
 Наступний крок — залучити якнайбільше учасників.
@@ -87,8 +133,6 @@ createAuctionScene.enter(async ctx => {
       createAuctionScene.leave();
     }
   };
-  await ctx.reply('Entered scene');
-
   await ctx.reply(auctionFields[currentStep].prompt);
   ctx.session.auctionData = {
     title: '',
@@ -96,6 +140,7 @@ createAuctionScene.enter(async ctx => {
     photos: [],
     startBet: 0,
     volunteerId: volunteer.id,
+    status: 'opened',
     betIds: [], // I don't think we need this
   };
   createAuctionScene.on('text', async ctx => {
@@ -134,31 +179,24 @@ createAuctionScene.enter(async ctx => {
   });
 });
 
-const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
-if (!BOT_ADMIN_TOKEN) {
-  throw new Error('no BOT_ADMIN_TOKEN provided');
-}
-if (!DB_NAME) {
-  throw new Error('no DB_NAME provided');
-}
-if (!DB_URL) {
-  throw new Error('no DB_URL provided');
-}
-
-export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
-
-adminBot.use(Telegraf.log());
-
-adminBot.use(async (ctx, next) => {
-  const connection = await MongoClient.connect(DB_URL);
-  ctx.db = connection.db(DB_NAME);
-  return next();
-});
-
-adminBot.use(session());
 adminBot.start(async ctx => {
-  console.log(ctx.message);
-  console.log(ctx.from);
+  await ctx.reply(` 
+Вітаю!
+
+Користуватися цим ботом дуже легко. Основні команди:
+
+/about - Як користуватися ботом 
+/create - Створити аукціон
+/edit - Редагувати аукціон
+/bids - Подивитися останні 3 ставки 
+/close - Закрити аукціон
+
+Всі ці команди ти можеш знайти в Меню.
+
+Коли аукціон буде створено, ти отримаєш посилання на бота для учасників.
+
+Не гаємо часу і розпочинаємо! 
+Успіхів.`);
   const volunteerRepository = new VolunteerRepository(ctx.db);
   ctx.session.volunteer = await volunteerRepository.register({
     telegramId: ctx.from.id,
@@ -297,11 +335,49 @@ adminBot.command('show_link', ctx => {
 
 adminBot.command('bids', async ctx => {
   const bidController = new BidVolunteerController(ctx);
-  await bidController.getHighestBet();
+  await bidController.handleHighestBid();
 });
 
-adminBot.command('close', ctx => {
-  ctx.reply('Закрити аукціон');
+adminBot.command('close', async ctx => {
+  const bidRepository = new BidRepository(ctx.db);
+  const {activeAuction} = ctx.session;
+  if (!activeAuction) {
+    await ctx.reply(
+      'В вас наразі немає активного аукціону. Щоб створити команда /create'
+    );
+    return;
+  }
+  const highestBid = await bidRepository.findHighest(activeAuction.id);
+  const clientRepository = new ClientRepository(ctx.db);
+  const client = await clientRepository.findById(highestBid.userId);
+  if (!client) {
+    await ctx.reply(
+      'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
+    );
+    console.log(
+      'What do we really do in this case? Suggesting to contact devs?'
+    );
+    return;
+  }
+  try {
+    await clientBot.telegram.sendMessage(
+      client.chatId,
+      'Привіт, ти виграв на аукціоні, поставити сюди текст!'
+    );
+  } catch (err) {
+    console.error(err);
+    await ctx.reply(
+      'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
+    );
+    return;
+  }
+  await ctx.reply(`Вітаю, аукціон «Назва» завершено!
+Переможцем став @${client.username}.
+Переможна ставка склала UAH ${highestBid.amount}
+Бот відправив привітальне повідомлення. 
+Не забудь надіслати деталі оплати та доставки.
+
+Гайда створювати новий аукціон? ( /create )`);
 });
 
 launchBot(adminBot);
