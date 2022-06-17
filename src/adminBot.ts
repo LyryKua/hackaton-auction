@@ -57,7 +57,6 @@ interface AuctionSceneContext extends AppContext {
 //   session: WrapSceneSession<C['session'], SSD>;
 // };
 
-
 const createAuctionScene = new Scenes.BaseScene<AuctionSceneContext>(
   CREATE_AUCTION_SCENE
 );
@@ -252,7 +251,7 @@ adminBot.command('list_a', async ctx => {
   );
 });
 
-adminBot.command('list_bits', async ctx => {
+adminBot.command('list_bids', async ctx => {
   ctx.reply('List of bids');
   const bidsController = new BidVolunteerController(ctx);
   await bidsController.getListOfBets();
@@ -265,12 +264,17 @@ adminBot.command('send_message_to_user', async ctx => {
     string
   ];
   const clientRepository = new ClientRepository(ctx.db);
-  const client = await clientRepository.findClientByUsername(username);
+  const client = await clientRepository.findClientByUsername(
+    username.replace('@', '')
+  );
   if (!client) {
     await ctx.reply('No such user');
     return;
   }
-  await clientBot.telegram.sendMessage(client.chatId, message);
+  await clientBot.telegram.sendMessage(
+    client.chatId,
+    message || 'empty message'
+  );
 });
 
 adminBot.command('about', ctx => {
