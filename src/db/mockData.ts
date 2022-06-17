@@ -1,4 +1,32 @@
-import {NewAuction} from './AuctionRepository';
+import {NewAuction, Auction} from './AuctionRepository';
+import {Bid} from './BidRepository'; // TODO: rename to bet
+import {randomUUID} from "crypto";
+
+type Mocker<T> = (overrides?: Partial<T>) => T
+
+export const arrayOf = <T>(length: number, factory: (index: number) => T): T[] =>
+    Array(length)
+        .fill(undefined)
+        .map((_, index) => factory(index))
+
+export const mockAuction: Mocker<Auction> = overrides => ({
+  id: randomUUID(),
+  title: 'foo title',
+  description: 'bar description zaz',
+  photos: [],
+  startBet: 10,
+  volunteerId: randomUUID(),
+  status: "opened",
+  ...overrides,
+})
+
+export const mockBid: Mocker<Bid> = overrides => ({
+  id: randomUUID(),
+  auctionId: randomUUID(),
+  clientId: randomUUID(),
+  amount: 42,
+  ...overrides,
+})
 
 export const mockAuctions = (volunteerId: string): NewAuction[] => [
   {
@@ -34,7 +62,6 @@ export const mockAuctions = (volunteerId: string): NewAuction[] => [
       'Всім привіт! Кому оці марки "русскій корабль всьо"? Гроші підуть куди треба!',
     volunteerId,
     startBet: 1000,
-    betIds: [],
   },
   {
     title: 'Другий аукціон',
@@ -68,7 +95,6 @@ export const mockAuctions = (volunteerId: string): NewAuction[] => [
     description: 'Добридень! Коротше, прийшла оця залупа дивіться, налітай!',
     volunteerId,
     startBet: 800,
-    betIds: [],
   },
 ];
 
