@@ -1,6 +1,6 @@
 import {Db, Filter, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
-import {RepositoryBase} from "./BaseRepository";
+import {RepositoryBase} from './BaseRepository';
 
 export interface Auction {
   id: string;
@@ -8,8 +8,9 @@ export interface Auction {
   description: string;
   photos: PhotoSize[];
   startBet: number;
-  volunteerId: number | string;
+  volunteerId: string;
   betIds: string[];
+  status: 'opened' | 'closed';
 }
 
 export type NewAuction = Omit<Auction, 'id'>;
@@ -28,9 +29,10 @@ type DBAuction = WithId<NewAuction>;
 //   return newVar;
 // };
 
-const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
+const transformAuction = ({_id, status, ...auction}: DBAuction): Auction => ({
   id: _id.toString(),
   ...auction,
+  status: status || 'opened',
 });
 
 export class AuctionRepository extends RepositoryBase<Auction> {
@@ -41,7 +43,20 @@ export class AuctionRepository extends RepositoryBase<Auction> {
     return {
       ...auction,
       id: insertedId.toString(),
+      status: 'opened',
     };
+  }
+
+  async close(auctionId: string, volunteerId: string) {
+    await this.collection().updateOne(
+      {
+        volunteerId,
+        _id: new ObjectId(auctionId),
+      },
+      {
+        status: 'closed',
+      }
+    );
   }
 
   async createMany(auctions: NewAuction[]): Promise<void> {
@@ -63,12 +78,26 @@ export class AuctionRepository extends RepositoryBase<Auction> {
     return transformAuction(auction);
   }
 
+  async findActive(volunteerId: string): Promise<Auction | null> {
+    const auction = await this.collection<Auction>().findOne({
+      volunteerId,
+      status: 'opened',
+    });
+    if (!auction) {
+      return null;
+    }
+    return transformAuction(auction);
+  }
+
   async deleteMany(filter: Filter<Auction> = {}) {
-    await this.collection().deleteMany({})
+    await this.collection().deleteMany({});
   }
 
   async update(id: string, betId: string) {
     // @ts-ignore
-    await this.collection().updateOne({_id:  new ObjectId(id)}, { $push: {betIds: betId } })
+    await this.collection().updateOne(
+      {_id: new ObjectId(id)},
+      {$push: {betIds: betId}}
+    );
   }
 }

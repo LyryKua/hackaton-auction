@@ -16,6 +16,7 @@ export interface ClientAppContext extends Context {
 
 export interface VolunteerSessionData {
   volunteer?: Volunteer;
+  activeAuction?: Auction;
 }
 
 export interface AppContext extends Context {

@@ -33,8 +33,13 @@ export class BidRepository extends RepositoryBase<Bid> {
     return cursor.toArray();
   }
 
-  async findHighest(): Promise<DbBid> {
-    const cursor = this.collection().find<DbBid>({}).sort({age: -1}).limit(1);
+  async findHighest(auctionId: string): Promise<DbBid> {
+    const cursor = this.collection()
+      .find<DbBid>({
+        auctionId,
+      })
+      .sort({age: -1})
+      .limit(1);
     const t = await cursor.toArray();
     return t[0];
   }

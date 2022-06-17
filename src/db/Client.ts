@@ -33,6 +33,12 @@ export class ClientRepository extends RepositoryBase<Client> {
     });
   }
 
+  async findById(userId: string): Promise<Client | null> {
+    return this.collection().findOne({
+      _id: new Object(userId),
+    });
+  }
+
   async findClientByUsername(username: string) {
     return this.collection().findOne({username});
   }
