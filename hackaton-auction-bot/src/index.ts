@@ -50,8 +50,8 @@ bot.start(async ctx => {
 ${auction.description}`;
   // ctx.reply(caption);
   await ctx.replyWithPhoto(auction.photos[0].file_id, {
-  //   caption,
-  // });
+    caption,
+  });
 });
 
 bot.command('test', ctx => {
