@@ -3,7 +3,7 @@ import 'dotenv/config';
 import {MongoClient} from 'mongodb';
 import {AppContext, ClientAppContext} from './types';
 import {AuctionRepository} from './db/AuctionRepository';
-import {BidController} from './controllers/BidController';
+import {BidController, BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 
@@ -49,10 +49,10 @@ clientBot.start(async ctx => {
 
   const caption = `${auction.title}
 ${auction.description}`;
-  // ctx.reply(caption);
-  await ctx.replyWithPhoto(auction.photos[0].file_id, {
-    caption,
-  });
+  ctx.reply(caption);
+  // await ctx.replyWithPhoto(auction.photos[0].file_id, {
+  //   caption,
+  // });
 });
 
 clientBot.command('test', ctx => {
@@ -68,7 +68,7 @@ clientBot.command('test', ctx => {
 });
 
 clientBot.command('make_bid', async ctx => {
-  const betController = new BidController(clientBot as any, ctx);
+  const betController = new BidController(ctx);
 
   betController.makeBid();
 });
@@ -77,7 +77,7 @@ clientBot.command('subscribe', ctx => {
   ctx.reply('Ви підписались на оновлення');
 });
 
-clientBot.command('subscribe', ctx => {
+clientBot.command('unsubscribe', ctx => {
   ctx.reply('Ви відписались від оновлень');
 });
 
@@ -88,6 +88,12 @@ clientBot.command('max_bid', ctx => {
 clientBot.command('about', ctx => {
   ctx.reply('У цьому боті ви можете робити ставку');
 });
+
+clientBot.command('all', async ctx => {
+  const tmp = new BidVolunteerController(ctx as any)
+
+  await tmp.getListOfBets()
+})
 
 launchBot(clientBot);
 

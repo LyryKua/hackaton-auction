@@ -1,4 +1,4 @@
-import {Db, ObjectId, WithId} from 'mongodb';
+import {Db, Filter, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
 import {RepositoryBase} from "./BaseRepository";
 
@@ -9,6 +9,7 @@ export interface Auction {
   photos: PhotoSize[];
   startBet: number;
   volunteerId: number | string;
+  betIds: string[];
 }
 
 export type NewAuction = Omit<Auction, 'id'>;
@@ -56,5 +57,14 @@ export class AuctionRepository extends RepositoryBase<Auction> {
       return null;
     }
     return transformAuction(auction);
+  }
+
+  async deleteMany(filter: Filter<Auction> = {}) {
+    await this.collection().deleteMany({})
+  }
+
+  async update(id: string, betId: string) {
+    // @ts-ignore
+    await this.collection().updateOne({_id:  new ObjectId(id)}, { $push: {betIds: betId } })
   }
 }

@@ -33,6 +33,7 @@ export const mockAuctions = (volunteerId: number | string): NewAuction[] => [
       'Всім привіт! Кому оці марки "русскій корабль всьо"? Гроші підуть куди треба!',
     volunteerId,
     startBet: 1000,
+    betIds: [],
   },
   {
     title: 'Другий аукціон',
@@ -65,6 +66,7 @@ export const mockAuctions = (volunteerId: number | string): NewAuction[] => [
     description: 'Добридень! Коротше, прийшла оця залупа дивіться, налітай!',
     volunteerId,
     startBet: 800,
+    betIds: [],
   },
 ];
 

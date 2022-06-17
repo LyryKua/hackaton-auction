@@ -10,9 +10,9 @@ import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
 import {VolunteerRepository} from './db/Volunteer';
+import {BidRepository} from "./db/BidRepository";
 
 const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
-
 if (!BOT_ADMIN_TOKEN) {
   throw new Error('no BOT_ADMIN_TOKEN provided');
 }
@@ -68,25 +68,9 @@ adminBot.command('clear_mock', async ctx => {
     ctx.reply(`Сильно хитрий?`);
     return;
   }
-  ctx.reply(
-    'You are about to clear Auctions collection, like I mean are you mad? You sure? Y / N'
-  );
-  adminBot.on('text', async ctx => {
-    const text = ctx.message.text;
-    switch (text) {
-      case 'N':
-        ctx.reply('Good choice');
-        return;
-      case 'Y':
-        ctx.reply('Phew, you asked for it 😬');
-        // not actually doing it for now
-        return;
-      default:
-        ctx.reply('I told you Y or N, is it not clear? 🙄');
-    }
-  });
-
-  console.log('userId', userId);
+  const auctionRepo = new AuctionRepository(ctx.db);
+  await auctionRepo.deleteMany();
+  await ctx.reply('DB cleared');
 });
 
 adminBot.command('fill_mock', async ctx => {
@@ -102,22 +86,36 @@ adminBot.command('list_a', async ctx => {
   const auctions = await auctionRepo.findAll();
   await ctx.reply('Here they all are right from the DB', {
     reply_markup: {
-      inline_keyboard: [auctions.map(auction => ({
+      inline_keyboard: auctions.map(auction => ([{
         text: auction.title,
         callback_data: auction.id,
-      }))]
+      }]))
     }
   });
 
   adminBot.action(auctions.map(a => a.id), async (ctx) => {
-    const matchedAuctions = auctions.find(auction => auction.id === ctx.match[0])
-    await ctx.reply(JSON.stringify(matchedAuctions, null, 2));
+    const matchedAuction = auctions.find(auction => auction.id === ctx.match[0])
+    await ctx.reply(JSON.stringify(matchedAuction, null, 2), {
+      reply_markup: {
+        inline_keyboard: matchedAuction?.betIds.map(betId => [{
+          text: betId,
+          callback_data: betId,
+        }]) ?? []
+      }
+    });
+
+    adminBot.action(matchedAuction?.betIds ?? [], async (ctx) => {
+      const betRepo = new BidRepository(ctx.db)
+      const matchedBetId = matchedAuction!.betIds.find(betId => betId === ctx.match[0])
+      const bet = await betRepo.findBetById(matchedBetId!)
+      await ctx.reply(JSON.stringify(bet, null, 2));
+    })
   })
 });
 
 adminBot.command('list_bits', async ctx => {
   ctx.reply('List of bids');
-  const bidsController = new BidVolunteerController(adminBot, ctx);
+  const bidsController = new BidVolunteerController(ctx);
   await bidsController.getListOfBets();
 });
 
@@ -144,7 +142,7 @@ adminBot.command('about', ctx => {
 `);
 });
 
-adminBot.command('show_link', (ctx, ...args) => {
+adminBot.command('show_link', ctx => {
   const auctionId = ctx.message.text.split(' ')[1];
   if (!auctionId) {
     ctx.reply('please pass the id, run /show_link ID');
@@ -155,7 +153,7 @@ adminBot.command('show_link', (ctx, ...args) => {
 });
 
 adminBot.command('bids', async ctx => {
-  const bidController = new BidVolunteerController(adminBot, ctx);
+  const bidController = new BidVolunteerController(ctx);
   await bidController.getHighestBet();
 });
 

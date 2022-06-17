@@ -1,4 +1,4 @@
-import {WithId} from 'mongodb';
+import {ObjectId, WithId} from 'mongodb';
 import {Auction} from './AuctionRepository';
 import {RepositoryBase} from './BaseRepository';
 
@@ -20,7 +20,7 @@ export class BidRepository extends RepositoryBase<Bid> {
   collectionName = 'bets';
 
   async makeBid(bid: Omit<Bid, 'createdAt'>) {
-    await this.collection<Omit<DbBid, '_id'>>().insertOne({
+    return await this.collection<Omit<DbBid, '_id'>>().insertOne({
       amount: bid.amount,
       auctionId: bid.auction.id,
       createdAt: new Date(),
@@ -37,5 +37,15 @@ export class BidRepository extends RepositoryBase<Bid> {
     const cursor = this.collection().find<DbBid>({}).sort({age: -1}).limit(1);
     const t = await cursor.toArray();
     return t[0];
+  }
+
+  async findBetById(id: string) {
+    const bet = await this.collection().findOne({
+      _id: new ObjectId(id),
+    });
+    if (!bet) {
+      return null;
+    }
+    return bet;
   }
 }

@@ -29,6 +29,7 @@ export class CreateAuctionController {
     photos: [],
     startBet: 0,
     volunteerId: 0,
+    betIds: [],
   };
   constructor(bot: Telegraf<AppContext>, ctx: AppContext) {
     this.bot = bot;
