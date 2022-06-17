@@ -1,5 +1,6 @@
 import {Db, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
+import {RepositoryBase} from "./BaseRepository";
 
 export interface Auction {
   id: string;
@@ -31,14 +32,6 @@ const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
   ...auction,
 });
 
-export abstract class RepositoryBase<Model> {
-  abstract collectionName: string;
-  constructor(protected readonly db: Db) {}
-
-  protected collection<T = Model>() {
-    return this.db.collection<T>(this.collectionName);
-  }
-}
 export class AuctionRepository extends RepositoryBase<Auction> {
   readonly collectionName: string = 'auctions';
 

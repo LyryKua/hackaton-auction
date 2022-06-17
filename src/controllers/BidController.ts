@@ -1,19 +1,21 @@
-import {NarrowedContext, Telegraf} from 'telegraf';
-import {AppContext} from '../types';
+import {Context, NarrowedContext, Telegraf} from 'telegraf';
+import {AppContext, ClientAppContext} from '../types';
 import {BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
 
-export class BidController {
+class BidControllerBase<C extends Context> {
   constructor(
-    private bot: Telegraf<AppContext>,
-    private ctx: NarrowedContext<AppContext, MountMap['text']>
+    protected bot: Telegraf<C>,
+    protected ctx: NarrowedContext<C, MountMap['text']>
   ) {}
+}
 
+export class BidController extends BidControllerBase<ClientAppContext> {
   async makeBid() {
     const bidRepository = new BidRepository(this.ctx.db);
     const bidAmountStr = this.ctx.message.text.split(' ')[1];
     if (String(Number(bidAmountStr)) !== bidAmountStr) {
-      this.ctx.reply(
+      await this.ctx.reply(
         'Бумласочка, введіть суму цифрами в форматі /make_bid 1000'
       );
       return;
@@ -22,7 +24,7 @@ export class BidController {
     const currentAuction = this.ctx.session.auction;
     if (!currentAuction) {
       console.log('what do we do?');
-      this.ctx.reply(
+      await this.ctx.reply(
         'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
       );
       return;
@@ -33,14 +35,16 @@ export class BidController {
       amount: bidAmount,
     };
     await bidRepository.makeBid(bid);
-    this.ctx.reply('Ставка прийнята');
+    await this.ctx.reply('Ставка прийнята');
   }
+}
 
+export class BidVolunteerController extends BidControllerBase<AppContext>{
   async getHighestBet() {
     const bidRepository = new BidRepository(this.ctx.db);
     const highestBid = await bidRepository.findHighest();
 
-    this.ctx.reply(
+    await this.ctx.reply(
       `Найбільша ставка: ${highestBid.amount} від ${highestBid.userId}`
     );
   }
@@ -48,7 +52,7 @@ export class BidController {
   async getListOfBets() {
     const bidRepo = new BidRepository(this.ctx.db);
     const bids = await bidRepo.findAll();
-    this.ctx.reply('Here they all are right from the DB');
-    this.ctx.reply(JSON.stringify(bids, null, 2));
+    await this.ctx.reply('Here they all are right from the DB');
+    await this.ctx.reply(JSON.stringify(bids, null, 2));
   }
 }

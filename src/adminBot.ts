@@ -5,8 +5,10 @@ import {CreateAuctionController} from './controllers/createAuction';
 import {AppContext} from './types';
 import {AuctionRepository} from './db/AuctionRepository';
 import {mockAuctions} from './db/mockData';
-import {BidController} from './controllers/BidController';
+import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
+import {ClientRepository} from './db/Client';
+import {clientBot} from './clientBot';
 
 const {BOT_ADMIN_TOKEN, DB_NAME, DB_URL} = process.env;
 
@@ -28,6 +30,11 @@ adminBot.use(async (ctx, next) => {
   const connection = await MongoClient.connect(DB_URL);
   ctx.db = connection.db(DB_NAME);
   return next();
+});
+
+adminBot.start(async ctx => {
+  console.log(ctx.message);
+  console.log(ctx.from);
 });
 
 adminBot.command('create', ctx => {
@@ -102,12 +109,26 @@ adminBot.command('list_a', async ctx => {
 
 adminBot.command('list_bits', async ctx => {
   ctx.reply('List of bids');
-  const bidsController = new BidController(adminBot, ctx);
-  bidsController.getListOfBets();
+  const bidsController = new BidVolunteerController(adminBot, ctx);
+  await bidsController.getListOfBets();
+});
+
+adminBot.command('send_message_to_user', async ctx => {
+  const [, username, message] = ctx.message.text.split(' ') as [
+    string,
+    string,
+    string
+  ];
+  const clientRepository = new ClientRepository(ctx.db);
+  const client = await clientRepository.findClientByUsername(username);
+  if (!client) {
+    await ctx.reply('No such user');
+    return;
+  }
+  await clientBot.telegram.sendMessage(client.chatId, message);
 });
 
 adminBot.command('about', ctx => {
-  console.log('about');
   ctx.reply(`Користуватися ботом дуже легко. Дивися:
 /create - Створити аукціон. Придумай назву для аукціону, додай фото, початкову ставку та опис (деталі, ціль збору коштів та все, щоб заохотити учасників).
 Коли аукціон створено, ти отримаєш готове посилання на бота для учасників. Поділися ним в соціальних мережах, аби більше людей знали про твій аукціон.
@@ -126,8 +147,8 @@ adminBot.command('show_link', (ctx, ...args) => {
 });
 
 adminBot.command('bids', async ctx => {
-  const bidController = new BidController(adminBot, ctx);
-  bidController.getHighestBet();
+  const bidController = new BidVolunteerController(adminBot, ctx);
+  await bidController.getHighestBet();
 });
 
 adminBot.command('close', ctx => {

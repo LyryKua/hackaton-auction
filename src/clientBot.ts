@@ -1,10 +1,11 @@
 import {Telegraf, session} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
-import {AppContext} from "./types";
-import { AuctionRepository } from './db/AuctionRepository';
-import { BidController } from './controllers/BidController';
-import { launchBot } from './launchBot';
+import {AppContext, ClientAppContext} from './types';
+import {AuctionRepository} from './db/AuctionRepository';
+import {BidController} from './controllers/BidController';
+import {launchBot} from './launchBot';
+import {ClientRepository} from './db/Client';
 
 const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
@@ -17,7 +18,7 @@ if (!DB_URL || !DB_NAME) {
   throw new Error('DB is not configured well');
 }
 
-export const clientBot = new Telegraf<AppContext>(process.env.BOT_TOKEN);
+export const clientBot = new Telegraf<ClientAppContext>(process.env.BOT_TOKEN);
 
 // TODO: this is a deprecated in-memory session, we might want to use a different one
 clientBot.use(session());
@@ -38,6 +39,12 @@ clientBot.start(async ctx => {
     return;
   }
   ctx.session.auction = auction;
+  const clientRepository = new ClientRepository(ctx.db);
+  ctx.session.client = await clientRepository.register({
+    telegramId: ctx.from.id,
+    username: ctx.from.username,
+    chatId: ctx.chat.id,
+  });
   // console.log('auction.photos', auction.photos);
 
   const caption = `${auction.title}
