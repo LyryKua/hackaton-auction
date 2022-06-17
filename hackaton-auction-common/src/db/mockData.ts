@@ -1,6 +1,6 @@
 import {NewAuction} from './AuctionRepository';
 
-export const mockAuctions = (volunteerId: string): NewAuction[] => [
+export const mockAuctions = (volunteerId: number | string): NewAuction[] => [
   {
     title: 'Перший аукціон',
     photos: [
@@ -65,5 +65,18 @@ export const mockAuctions = (volunteerId: string): NewAuction[] => [
     description: 'Добридень! Коротше, прийшла оця залупа дивіться, налітай!',
     volunteerId,
     startBet: 800,
+  },
+];
+
+export const mockBets = (auctionId: string, clientId: string): any[] => [
+  {
+    auctionId,
+    clientId,
+    amount: 1255,
+  },
+  {
+    auctionId,
+    clientId,
+    amount: 1200,
   },
 ];

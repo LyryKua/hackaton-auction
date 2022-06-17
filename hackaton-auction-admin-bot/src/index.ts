@@ -1,12 +1,14 @@
-import {Context, Telegraf} from 'telegraf';
+import {Telegraf} from 'telegraf';
 import 'dotenv/config';
 import {
   AuctionRepository,
+  BidController,
   launchBot,
   mockAuctions,
 } from 'hackaton-auction-common';
-import {Db, MongoClient} from 'mongodb';
+import {MongoClient} from 'mongodb';
 import {CreateAuctionController} from './controllers/createAuction';
+import {AppContext} from 'hackaton-auction-common/src/types';
 
 const {BOT_TOKEN, DB_NAME, DB_URL} = process.env;
 
@@ -18,10 +20,6 @@ if (!DB_NAME) {
 }
 if (!DB_URL) {
   throw new Error('no DB_URL provided');
-}
-
-export interface AppContext extends Context {
-  db: Db;
 }
 
 const bot = new Telegraf<AppContext>(BOT_TOKEN);
@@ -89,12 +87,18 @@ bot.command('list_a', async ctx => {
   ctx.reply(JSON.stringify(auctions, null, 2));
 });
 
+bot.command('list_bits', async ctx => {
+  ctx.reply('List of bids');
+  const bidsController = new BidController(bot, ctx);
+  bidsController.getListOfBets();
+});
+
 bot.command('about', ctx => {
   console.log('about');
   ctx.reply(`Користуватися ботом дуже легко. Дивися:
 /create - Створити аукціон. Придумай назву для аукціону, додай фото, початкову ставку та опис (деталі, ціль збору коштів та все, щоб заохотити учасників).
 Коли аукціон створено, ти отримаєш готове посилання на бота для учасників. Поділися ним в соціальних мережах, аби більше людей знали про твій аукціон.
-/bids - Подивитися останні 3 ставки.
+/bets - Подивитися останні 3 ставки.
 `);
 });
 
@@ -108,8 +112,9 @@ bot.command('show_link', (ctx, ...args) => {
   ctx.reply(`https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auctionId}`);
 });
 
-bot.command('bids', ctx => {
-  ctx.reply('Подивитись останню ставку');
+bot.command('bids', async ctx => {
+  const bidController = new BidController(bot, ctx);
+  bidController.getHighestBet();
 });
 
 bot.command('close', ctx => {

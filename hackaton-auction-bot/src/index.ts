@@ -1,11 +1,10 @@
-import {Telegraf, Context, session} from 'telegraf';
+import {Telegraf, session} from 'telegraf';
 import 'dotenv/config';
-import {Db, MongoClient} from 'mongodb';
+import {MongoClient} from 'mongodb';
 import {
-  Auction,
+  AppContext,
   AuctionRepository,
-  Bid,
-  BidRepository,
+  BidController,
   ExampleShared,
   launchBot,
 } from 'hackaton-auction-common';
@@ -22,15 +21,6 @@ if (!process.env.BOT_TOKEN) {
 
 if (!DB_URL || !DB_NAME) {
   throw new Error('DB is not configured well');
-}
-
-interface SessionData {
-  auction?: Auction;
-}
-
-interface AppContext extends Context {
-  db: Db;
-  session: SessionData;
 }
 
 const bot = new Telegraf<AppContext>(process.env.BOT_TOKEN);
@@ -58,10 +48,10 @@ bot.start(async ctx => {
 
   const caption = `${auction.title}
 ${auction.description}`;
-  // ctx.reply(caption);
-  await ctx.replyWithPhoto(auction.photos[0].file_id, {
-    caption,
-  });
+  ctx.reply(caption);
+  // await ctx.replyWithPhoto(auction.photos[0].file_id, {
+  //   caption,
+  // });
 });
 
 bot.command('test', ctx => {
@@ -77,29 +67,9 @@ bot.command('test', ctx => {
 });
 
 bot.command('make_bid', async ctx => {
-  console.log('make bid robe');
-  const bidRepository = new BidRepository(ctx.db);
-  const bidAmountStr = ctx.message.text.split(' ')[1];
-  if (String(Number(bidAmountStr)) !== bidAmountStr) {
-    ctx.reply('Бумласочка, введіть суму цифрами в форматі /make_bid 1000');
-    return;
-  }
-  const bidAmount = Number(bidAmountStr);
-  const currentAuction = ctx.session.auction;
-  if (!currentAuction) {
-    console.log('what do we do?');
-    ctx.reply(
-      'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
-    );
-    return;
-  }
-  const bid = {
-    userId: String(ctx.message.from.id),
-    auction: currentAuction,
-    amount: bidAmount,
-  };
-  await bidRepository.makeBid(bid);
-  ctx.reply('Ставка прийнята');
+  const betController = new BidController(bot as any, ctx);
+
+  betController.makeBid();
 });
 
 bot.command('subscribe', ctx => {

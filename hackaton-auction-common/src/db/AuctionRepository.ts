@@ -10,20 +10,6 @@ export interface Auction {
   volunteerId: number | string;
 }
 
-export interface Bid {
-  userId: string;
-  auction: Auction;
-  amount: number;
-  createdAt: Date;
-}
-
-interface DBBid {
-  userId: string;
-  auctionId: string;
-  amount: number;
-  createdAt: Date;
-}
-
 export type NewAuction = Omit<Auction, 'id'>;
 
 type DBAuction = WithId<NewAuction>;
@@ -45,7 +31,7 @@ const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
   ...auction,
 });
 
-abstract class RepositoryBase<Model> {
+export abstract class RepositoryBase<Model> {
   abstract collectionName: string;
   constructor(protected readonly db: Db) {}
 
@@ -77,18 +63,5 @@ export class AuctionRepository extends RepositoryBase<Auction> {
       return null;
     }
     return transformAuction(auction);
-  }
-}
-
-export class BidRepository extends RepositoryBase<Bid> {
-  collectionName = 'bids';
-
-  async makeBid(bid: Omit<Bid, 'createdAt'>) {
-    await this.collection<Omit<DBBid, '_id'>>().insertOne({
-      amount: bid.amount,
-      auctionId: bid.auction.id,
-      createdAt: new Date(),
-      userId: bid.userId
-    });
   }
 }
