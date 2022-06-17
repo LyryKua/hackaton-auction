@@ -36,8 +36,12 @@ const transformAuction = ({_id, ...auction}: DBAuction): Auction => ({
 export class AuctionRepository extends RepositoryBase<Auction> {
   readonly collectionName: string = 'auctions';
 
-  async create(auction: NewAuction): Promise<void> {
-    await this.collection<NewAuction>().insertOne(auction);
+  async create(auction: NewAuction): Promise<Auction> {
+    const {insertedId} = await this.collection<NewAuction>().insertOne(auction);
+    return {
+      ...auction,
+      id: insertedId.toString(),
+    };
   }
 
   async createMany(auctions: NewAuction[]): Promise<void> {
