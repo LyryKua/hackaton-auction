@@ -1,6 +1,5 @@
-import {AuctionRepository} from 'hackaton-auction-common';
+import {AppContext, AuctionRepository} from 'hackaton-auction-common';
 import {Telegraf} from 'telegraf';
-import {AppContext} from '../index';
 
 const fieldIds = ['title', 'description', 'photos', 'startBet'] as const;
 type Field = {
@@ -53,6 +52,7 @@ export class CreateAuctionController {
     this.bot.on('text', async ctx => {
       const userInput = ctx.message.text;
       this.auctionData.volunteerId = ctx.message.from.id;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       this.auctionData[this.currentField.id] = userInput;
       if (this.fields.length) {
