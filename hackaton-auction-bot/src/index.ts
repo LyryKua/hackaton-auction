@@ -48,8 +48,8 @@ bot.start(async ctx => {
 
   const caption = `${auction.title}
 ${auction.description}`;
-  ctx.reply(caption);
-  // await ctx.replyWithPhoto(auction.photos[0].file_id, {
+  // ctx.reply(caption);
+  await ctx.replyWithPhoto(auction.photos[0].file_id, {
   //   caption,
   // });
 });
