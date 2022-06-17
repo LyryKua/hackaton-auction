@@ -40,13 +40,15 @@ adminBot.command('edit', ctx => {
 
 const SUPER_ADMINS = [
   // devs you can add your user id here
-  45412931, 246078859,
+  45412931,
+  246078859,
+  40419532, // kyryloh@wix.com
 ];
 
 adminBot.command('clear_mock', async ctx => {
   const userId = ctx.message.from.id;
   if (!SUPER_ADMINS.includes(userId)) {
-    ctx.reply('Сильно хитрий?');
+    ctx.reply(`Сильно хитрий?`);
     return;
   }
   ctx.reply(
@@ -81,8 +83,8 @@ adminBot.command('fill_mock', async ctx => {
 adminBot.command('list_a', async ctx => {
   const auctionRepo = new AuctionRepository(ctx.db);
   const auctions = await auctionRepo.findAll();
-  ctx.reply('Here they all are right from the DB');
-  ctx.reply(JSON.stringify(auctions, null, 2));
+  await ctx.reply('Here they all are right from the DB');
+  await ctx.reply(JSON.stringify(auctions, null, 2));
 });
 
 adminBot.command('list_bits', async ctx => {
