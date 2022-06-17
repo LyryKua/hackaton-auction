@@ -4,6 +4,7 @@ import {Bid, BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
 import {AuctionRepository} from '../db/AuctionRepository';
 import {ClientRepository} from '../db/Client';
+import {isValidByAmount, validateByExists} from '../validators/bidValidators';
 
 class BidControllerBase<C extends Context> {
   constructor(protected ctx: NarrowedContext<C, MountMap['text']>) {}
@@ -21,14 +22,16 @@ export class BidController extends BidControllerBase<ClientAppContext> {
     const bidRepository = new BidRepository(this.ctx.db);
     const auctionRepository = new AuctionRepository(this.ctx.db);
     const bidAmountStr = this.ctx.message.text.split(' ')[1];
-    if (String(Number(bidAmountStr)) !== bidAmountStr) {
-      await this.ctx.reply(
-        'Бумласочка, введіть суму цифрами в форматі /make_bid 1000'
-      );
+    const notExistErrorMessage = validateByExists(bidAmountStr);
+
+    if (notExistErrorMessage) {
+      await this.ctx.reply(notExistErrorMessage);
       return;
     }
+
     const bidAmount = Number(bidAmountStr);
     const currentAuction = this.ctx.session.auction;
+
     if (!currentAuction) {
       await this.ctx.reply(
         'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
@@ -36,13 +39,24 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       return;
     }
 
+    const notEnoughAmountErrorMessage = await isValidByAmount(
+      bidRepository,
+      currentAuction,
+      bidAmount
+    );
+
+    if (notEnoughAmountErrorMessage) {
+      await this.ctx.reply(notEnoughAmountErrorMessage);
+      return;
+    }
+
     const bid = {
       clientId: client.id,
       auctionId: currentAuction.id,
       amount: bidAmount,
-
     };
     const newBid = await bidRepository.makeBid(bid);
+
     console.log('test42', newBid.insertedId.toString(), currentAuction.id);
     await auctionRepository.update(
       currentAuction.id,
