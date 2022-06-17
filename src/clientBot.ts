@@ -50,9 +50,9 @@ clientBot.start(async ctx => {
   const caption = `${auction.title}
 ${auction.description}`;
   ctx.reply(caption);
-  // await ctx.replyWithPhoto(auction.photos[0].file_id, {
-  //   caption,
-  // });
+  await ctx.replyWithPhoto(auction.photos[0].file_id, {
+    caption,
+  });
 });
 
 clientBot.command('test', ctx => {
