@@ -1,5 +1,6 @@
-import {AppContext, AuctionRepository} from 'hackaton-auction-common';
 import {Telegraf} from 'telegraf';
+import {AuctionRepository} from '../db/AuctionRepository';
+import {AppContext} from '../types';
 
 const fieldIds = ['title', 'description', 'photos', 'startBet'] as const;
 type Field = {
