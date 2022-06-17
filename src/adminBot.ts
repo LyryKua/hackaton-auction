@@ -1,8 +1,8 @@
-import {Telegraf, Scenes, session} from 'telegraf';
+import {Telegraf, Scenes, session, Context, Middleware} from 'telegraf';
 import 'dotenv/config';
 import {MongoClient} from 'mongodb';
-import {AppContext} from './types';
-import {AuctionRepository} from './db/AuctionRepository';
+import {AppContext, VolunteerSessionData} from './types';
+import {AuctionRepository, NewAuction} from './db/AuctionRepository';
 import {mockAuctions} from './db/mockData';
 import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
@@ -10,8 +10,13 @@ import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
 import {VolunteerRepository} from './db/Volunteer';
 import {BidRepository} from './db/BidRepository';
+import {
+  SceneContextScene,
+  SceneSession,
+  SceneSessionData,
+} from 'telegraf/typings/scenes';
 
-const CreateAuctionScene = 'CREATE_AUCTION_SCENE2';
+const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
 const auctionFields = [
   {id: 'title', prompt: 'Назва аукціону'},
@@ -19,30 +24,81 @@ const auctionFields = [
   {id: 'photos', prompt: 'Додай мінімум одне фото'},
   {id: 'startBet', prompt: 'Яка початкова ставка?'},
 ];
-const createAuctionScene = new Scenes.BaseScene<AppContext>(CreateAuctionScene);
+
+interface AuctionSceneSession extends SceneSession<SceneSessionData> {
+  auctionData: NewAuction;
+}
+
+interface AuctionSceneContext extends AppContext {
+  session: VolunteerSessionData & AuctionSceneSession;
+  scene: SceneContextScene<AuctionSceneContext, SceneSessionData>;
+}
+
+// interface AuctionSceneSession extends VolunteerSessionData {
+//   auctionData: NewAuction;
+// }
+//
+// interface AuctionSceneContext extends AppContext {
+//   session: VolunteerSessionData & AuctionSceneSession;
+//   // scene: SceneContextScene<AuctionSceneContext, SceneSessionData>;
+// }
+
+// type WrapSceneSession<S extends {}, SSD extends SceneSessionData> = S &
+//   SceneSession<SSD>;
+//
+// type WrapSceneContext<
+//   C extends AppContext,
+//   SSD extends SceneSessionData = SceneSessionData
+// > = C & {
+//   scene: SceneContextScene<
+//     C & { session: C['session'] & SceneSession<SSD> },
+//     SSD
+//   >;
+//   session: WrapSceneSession<C['session'], SSD>;
+// };
+
+
+const createAuctionScene = new Scenes.BaseScene<AuctionSceneContext>(
+  CREATE_AUCTION_SCENE
+);
 createAuctionScene.enter(async ctx => {
   let currentStep = 0;
+  const volunteer = ctx.session.volunteer;
+  if (!volunteer) {
+    await ctx.reply(
+      'Щось мабуть пішло не так, дуже шкода, бумласка, спробуйте почати заново /start'
+    );
+    createAuctionScene.leave();
+    return;
+  }
   const next = async () => {
     currentStep++;
     if (currentStep < auctionFields.length) {
-      ctx.reply(auctionFields[currentStep].prompt);
+      await ctx.reply(auctionFields[currentStep].prompt);
     } else {
       const repo = new AuctionRepository(ctx.db);
       const auction = await repo.create({
         ...ctx.session.auctionData,
         volunteerId: 1,
       });
-      ctx.reply(`Вітаю!
+      await ctx.reply(`Вітаю!
 Аукціон створено.
 Наступний крок — залучити якнайбільше учасників.
 Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction.id}`);
       createAuctionScene.leave();
     }
   };
-  ctx.reply('Entered scene');
+  await ctx.reply('Entered scene');
 
-  ctx.reply(auctionFields[currentStep].prompt);
-  ctx.session.auctionData = {};
+  await ctx.reply(auctionFields[currentStep].prompt);
+  ctx.session.auctionData = {
+    title: '',
+    description: '',
+    photos: [],
+    startBet: 0,
+    volunteerId: volunteer.id,
+    betIds: [], // I don't think we need this
+  };
   createAuctionScene.on('text', async ctx => {
     const currentField = auctionFields[currentStep].id;
     switch (currentField) {
@@ -57,7 +113,7 @@ createAuctionScene.enter(async ctx => {
         break;
       }
       case 'startBet': {
-        ctx.session.auctionData.startBet = ctx.message.text;
+        ctx.session.auctionData.startBet = Number(ctx.message.text);
         await next();
         break;
       }
@@ -111,12 +167,15 @@ adminBot.start(async ctx => {
     chatId: ctx.chat.id,
   });
 });
-const stage = new Scenes.Stage<Scenes.SceneContext>([createAuctionScene]);
-adminBot.use(stage.middleware());
+
+// type AuctionStageContext = WrapSceneContext<AuctionSceneContext>;
+// TODO: do it more properly with the wrapper
+const stage = new Scenes.Stage<AuctionSceneContext>([createAuctionScene]);
+adminBot.use(stage.middleware() as unknown as Middleware<AppContext>);
 
 adminBot.command('create', ctx => {
   // @ts-ignore
-  ctx.scene.enter(CreateAuctionScene);
+  ctx.scene.enter(CREATE_AUCTION_SCENE);
 });
 
 adminBot.command('edit', ctx => {
