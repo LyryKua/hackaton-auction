@@ -44,10 +44,15 @@ export class ClientRepository extends RepositoryBase<Client> {
     };
   }
 
-  async findById(userId: string): Promise<Client | null> {
+  async findById(clientId: string): Promise<Client | null> {
     return this.collection().findOne({
-      _id: new ObjectId(userId),
+      _id: new ObjectId(clientId),
     });
+  }
+
+  findByAuctionId(auctionIds: string[]): Promise<Client[] | null> {
+    const cursor = this.collection().find({});
+    return cursor.toArray()
   }
 
   async findClientByUsername(username: string) {

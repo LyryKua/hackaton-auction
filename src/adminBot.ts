@@ -1,4 +1,5 @@
 import {Middleware, Scenes, Telegraf} from 'telegraf';
+import {uniqBy} from 'lodash';
 import 'dotenv/config';
 import {AppContext, VolunteerSessionData} from './types';
 import {Auction, AuctionRepository, NewAuction} from './db/AuctionRepository';
@@ -358,6 +359,7 @@ getDb().then(db => {
     }
     const clientRepository = new ClientRepository('clients', ctx.db);
     const client = await clientRepository.findById(highestBid.clientId);
+    const allBids = await bidRepository.findAll({auctionId: activeAuction.id})
     if (!client) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
@@ -368,6 +370,16 @@ getDb().then(db => {
       return;
     }
     try {
+      for (const bid of uniqBy(allBids, 'clientId')) {
+        const participant = await clientRepository.findById(bid.clientId)
+        if (!participant) {
+          await ctx.reply(
+              'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
+          );
+          return
+        }
+        await clientBot.telegram.sendMessage(participant.chatId!, 'Привіт, аукціон завершенно вставити сюди текст')
+      }
       await clientBot.telegram.sendMessage(
         client.chatId,
         'Привіт, ти виграв на аукціоні, поставити сюди текст!'
