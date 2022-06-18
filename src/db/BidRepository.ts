@@ -37,7 +37,7 @@ export class BidRepository extends RepositoryBase<Bid> {
   }
 
   async findAll(filter: Filter<Bid> = {}): Promise<Bid[]> {
-    const cursor = this.collection().find<DbBid>(filter);
+    const cursor = this.db.collection(BIDS_COLLECTION).find<DbBid>(filter);
     const dbBids = await cursor.toArray();
     return dbBids.map(transformBid);
   }

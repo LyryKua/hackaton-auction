@@ -268,6 +268,7 @@ getDb().then(db => {
   adminBot.command('list_a', async ctx => {
     const auctionRepo = new AuctionRepository(ctx.db);
     const auctions = await auctionRepo.findAll();
+    console.log(auctions);
     await ctx.reply('Here they all are right from the DB', {
       reply_markup: {
         inline_keyboard: auctions.map(auction => [
@@ -290,14 +291,24 @@ getDb().then(db => {
           return
         }
         const bidRepo = new BidRepository(ctx.db)
+        console.log('test42', matchedAuction);
         const bids = await bidRepo.findAll({auctionId: matchedAuction.id})
-        const caption = `Title: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`
-        await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
-          caption, parse_mode: 'MarkdownV2', reply_markup: {
+        console.log(bids);
+        const caption = `Photo: TODO\nTitle: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`
+        // await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
+        //   caption, parse_mode: 'MarkdownV2', reply_markup: {
+        //     inline_keyboard: bids.map(bid => [{
+        //       text: `user: ${bid.clientId} – ${bid.amount}`,
+        //       callback_data: 'test',
+        //     }]) // TODO: get by unique user and highest bids
+        //   }
+        // })
+        await ctx.reply(`${caption}\n${bids.length === 0 ? 'no bids' : 'bids are below'}`, {
+          reply_markup: {
             inline_keyboard: bids.map(bid => [{
               text: `user: ${bid.clientId} – ${bid.amount}`,
               callback_data: 'test',
-            }]) // TODO: get by uniq user and highes bids
+            }])
           }
         })
       }
