@@ -1,6 +1,6 @@
 import {Context, NarrowedContext, Telegraf} from 'telegraf';
 import {AppContext, ClientAppContext} from '../types';
-import {Bid, BidRepository} from '../db/BidRepository';
+import {BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
 import {AuctionRepository} from '../db/AuctionRepository';
 import {ClientRepository} from '../db/Client';
@@ -77,6 +77,10 @@ export class BidVolunteerController extends BidControllerBase<AppContext> {
       return;
     }
     const highestBid = await bidRepository.findHighest(activeAuction.id);
+    if (!highestBid) {
+      await this.ctx.reply('Ставок ще не було.');
+      return;
+    }
     const clientRepo = new ClientRepository('clients', this.ctx.db);
     const user = await clientRepo.findById(highestBid.clientId);
 

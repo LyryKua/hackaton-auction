@@ -86,7 +86,7 @@ getDb().then(db => {
     console.log('volunteer', volunteer);
     if (volunteer) {
       ctx.session.activeAuction =
-        (await auctionRepo.findActive(volunteer.id!)) || undefined;
+        (await auctionRepo.findActive(volunteer.id)) || undefined;
       console.log('ctx.session.activeAuction', ctx.session.activeAuction);
     }
     return next();
@@ -121,13 +121,12 @@ getDb().then(db => {
         await ctx.reply(auctionFields[currentStep].prompt);
       } else {
         const auctionsService = new AuctionService(ctx.db);
-        const auction: Auction = {
+        const newAuction: NewAuction = {
           ...auctionData,
-          id: randomUUID(),
-          volunteerId: ctx.session.volunteer?.id!,
+          volunteerId: volunteer.id,
           status: 'opened',
         };
-        await auctionsService.create(auction);
+        const auction = await auctionsService.create(newAuction);
         ctx.session.activeAuction = auction;
         await ctx.reply(`Вітаю!
 Аукціон створено.
@@ -142,7 +141,7 @@ getDb().then(db => {
       description: '',
       photos: [],
       startBet: 0,
-      volunteerId: volunteer.id!,
+      volunteerId: volunteer.id,
       status: 'opened',
     };
     createAuctionScene.on('text', async ctx => {
@@ -353,6 +352,10 @@ getDb().then(db => {
       return;
     }
     const highestBid = await bidRepository.findHighest(activeAuction.id);
+    if (!highestBid) {
+      await ctx.reply('Не було жодних ставок. Finish this flow');
+      return;
+    }
     const clientRepository = new ClientRepository('clients', ctx.db);
     const client = await clientRepository.findById(highestBid.clientId);
     if (!client) {
