@@ -80,19 +80,19 @@ ${auction.description}`;
     ctx.reply(
       `You are @${ctx.message.from.username}. Your id – ${ctx.message.from.id}`
     );
-    await ctx.replyWithPhoto(
-      'AgACAgIAAxkBAAMfYqslt567Db5L6qnn0a7RjFM9OnYAAlq8MRvH22FJgbWozqFukfgBAAMCAANzAAMkBA'
-    );
-    await ctx.reply(
-      (
-        await clientBot.telegram.getFileLink(
-          'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
-        )
-      ).href
-    );
-    await ctx.replyWithPhoto(
-      'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
-    );
+    // await ctx.replyWithPhoto(
+    //   'AgACAgIAAxkBAAMfYqslt567Db5L6qnn0a7RjFM9OnYAAlq8MRvH22FJgbWozqFukfgBAAMCAANzAAMkBA'
+    // );
+    // await ctx.reply(
+    //   (
+    //     await clientBot.telegram.getFileLink(
+    //       'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
+    //     )
+    //   ).href
+    // );
+    // await ctx.replyWithPhoto(
+    //   'AgACAgIAAxkBAAIBD2Ksxa19fZ77rspkVeA_YscVKD4sAAI-vDEbUpphSU35cEKY_DSeAQADAgADcwADJAQ'
+    // );
     // clientBot.on('photo', ctx => {
     //   ctx.reply(JSON.stringify(ctx.message.photo, null, 2));
     //   ctx.replyWithPhoto(ctx.message.photo[0].file_id);
