@@ -2,7 +2,7 @@ import {Middleware, Scenes, Telegraf} from 'telegraf';
 import {uniqBy} from 'lodash';
 import 'dotenv/config';
 import {AppContext, VolunteerSessionData} from './types';
-import {Auction, AuctionRepository, NewAuction} from './db/AuctionRepository';
+import {AuctionRepository, NewAuction} from './db/AuctionRepository';
 import {arrayOf, mockAuction, mockBid} from './db/mockData';
 import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
@@ -20,7 +20,6 @@ import {VolunteerService} from './services/VolunteerService';
 import {BidService} from './services/BidService';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
-import {inlineKeyboard} from "telegraf/typings/markup";
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -28,7 +27,7 @@ const auctionFields = [
   {id: 'title', prompt: 'Назва аукціону'},
   {id: 'description', prompt: 'Опис аукціону'},
   {id: 'photos', prompt: 'Додай мінімум одне фото'},
-  {id: 'startBet', prompt: 'Яка початкова ставка?'},
+  {id: 'startBid', prompt: 'Яка початкова ставка?'},
 ];
 
 interface AuctionSceneSession extends SceneSession<SceneSessionData> {
@@ -142,7 +141,7 @@ getDb().then(db => {
       title: '',
       description: '',
       photos: [],
-      startBet: 0,
+      startBid: 0,
       volunteerId: volunteer.id,
       status: 'opened',
     };
@@ -162,8 +161,8 @@ getDb().then(db => {
           await next();
           break;
         }
-        case 'startBet': {
-          auctionData.startBet = Number(ctx.message.text);
+        case 'startBid': {
+          auctionData.startBid = Number(ctx.message.text);
           await next();
           break;
         }
@@ -294,7 +293,7 @@ getDb().then(db => {
         }
         const bidRepo = new BidRepository(ctx.db)
         const bids = await bidRepo.findAll({auctionId: matchedAuction.id})
-        const caption = `Title: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBet: *${matchedAuction.startBet}*\n`
+        const caption = `Title: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`
         await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
           caption, parse_mode: 'MarkdownV2', reply_markup: {
             inline_keyboard: bids.map(bid => [{

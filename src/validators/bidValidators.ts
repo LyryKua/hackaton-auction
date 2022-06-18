@@ -19,8 +19,8 @@ export const isValidByAmount = async (
   auction: Auction,
   bidAmount: number
 ): Promise<string | null> => {
-  if (auction.startBet > bidAmount) {
-    return invalidMessages.notEnoughAmount(auction.startBet);
+  if (auction.startBid > bidAmount) {
+    return invalidMessages.notEnoughAmount(auction.startBid);
   }
 
   const highestBid = await bidRepository.findHighest(auction.id);

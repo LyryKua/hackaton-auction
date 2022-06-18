@@ -9,7 +9,7 @@ export type Auction = {
   title: string;
   description: string;
   photos: PhotoSize[];
-  startBet: number;
+  startBid: number;
   volunteerId: string;
   status: 'opened' | 'closed';
 };

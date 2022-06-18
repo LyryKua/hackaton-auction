@@ -14,7 +14,7 @@ export const mockAuction: Mocker<Auction> = overrides => ({
   title: 'foo title',
   description: 'bar description zaz',
   photos: [],
-  startBet: 10,
+  startBid: 10,
   volunteerId: randomUUID(),
   status: "opened",
   ...overrides,
@@ -61,7 +61,7 @@ export const mockAuctions = (volunteerId: string): NewAuction[] => [
     description:
       'Всім привіт! Кому оці марки "русскій корабль всьо"? Гроші підуть куди треба!',
     volunteerId,
-    startBet: 1000,
+    startBid: 1000,
   },
   {
     title: 'Другий аукціон',
@@ -94,7 +94,7 @@ export const mockAuctions = (volunteerId: string): NewAuction[] => [
     ],
     description: 'Добридень! Коротше, прийшла оця залупа дивіться, налітай!',
     volunteerId,
-    startBet: 800,
+    startBid: 800,
   },
 ];
 
