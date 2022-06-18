@@ -65,11 +65,6 @@ getDb().then(db => {
 ${auction.description}`;
     ctx.reply(caption);
     const photoSizes = auction.photos;
-    console.log(
-      'photo sizes',
-      photoSizes,
-      photoSizes[photoSizes.length - 1].file_id
-    );
     try {
       await ctx.replyWithPhoto(photoSizes[photoSizes.length - 1].file_id, {
         caption,
@@ -110,12 +105,12 @@ ${auction.description}`;
     await betController.makeBid();
   });
 
-  clientBot.command('subscribe', ctx => {
-    ctx.reply('Ви підписались на оновлення');
+  clientBot.command('subscribe', async ctx => {
+    await ctx.reply('Ви підписались на оновлення');
   });
 
-  clientBot.command('unsubscribe', ctx => {
-    ctx.reply('Ви відписались від оновлень');
+  clientBot.command('unsubscribe', async ctx => {
+    await ctx.reply('Ви відписались від оновлень');
   });
 
   clientBot.command('max_bid', ctx => {

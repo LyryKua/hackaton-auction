@@ -84,11 +84,9 @@ getDb().then(db => {
   adminBot.use(async (ctx, next) => {
     const auctionRepo = new AuctionRepository(ctx.db);
     const volunteer = ctx.session.volunteer;
-    console.log('volunteer', volunteer);
     if (volunteer) {
       ctx.session.activeAuction =
         (await auctionRepo.findActive(volunteer.id)) || undefined;
-      console.log('ctx.session.activeAuction', ctx.session.activeAuction);
     }
     return next();
   });
@@ -346,7 +344,6 @@ getDb().then(db => {
       ctx.reply('please pass the id, run /show_link ID');
       return;
     }
-    console.log('id', auctionId);
     ctx.reply(
       `https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auctionId}`
     );
@@ -377,9 +374,6 @@ getDb().then(db => {
     if (!client) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
-      );
-      console.log(
-        'What do we really do in this case? Suggesting to contact devs?'
       );
       return;
     }

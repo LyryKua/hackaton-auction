@@ -28,8 +28,6 @@ export class BidRepository extends RepositoryBase<Bid> {
   }
 
   async makeBid(bid: Omit<Bid, 'createdAt' | 'id'>) {
-    console.log('inserting with client id', bid.clientId);
-    console.log(typeof bid.clientId)
     return await this.db.collection(BIDS_COLLECTION).insertOne({
       amount: bid.amount,
       auctionId: bid.auctionId,
