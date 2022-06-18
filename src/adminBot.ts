@@ -20,6 +20,7 @@ import {VolunteerService} from './services/VolunteerService';
 import {BidService} from './services/BidService';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
+import {inlineKeyboard} from "telegraf/typings/markup";
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -287,7 +288,18 @@ getDb().then(db => {
         const matchedAuction = auctions.find(
           auction => auction.id === ctx.match[0]
         );
-        await ctx.reply(JSON.stringify(matchedAuction, null, 2));
+        if (!matchedAuction) {
+          await ctx.reply('no matched auction')
+          return
+        }
+        const caption = `Title: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBet: *${matchedAuction.startBet}*\n`
+        await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
+          caption, parse_mode: 'MarkdownV2', reply_markup: {
+            inline_keyboard: [
+              [{text: 'test', callback_data: 'data'}]
+            ]
+          }
+        })
       }
     );
   });
