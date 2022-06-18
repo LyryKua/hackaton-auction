@@ -1,4 +1,4 @@
-import {Db, Filter, WithId} from 'mongodb';
+import {Db, Filter, Sort, WithId} from 'mongodb';
 import {RepositoryBase} from './BaseRepository';
 import {randomUUID} from "crypto";
 
@@ -38,8 +38,8 @@ export class BidRepository extends RepositoryBase<Bid> {
     });
   }
 
-  async findAll(): Promise<Bid[]> {
-    const cursor = this.collection().find<DbBid>({});
+  async findAll(filter: Filter<Bid> = {}): Promise<Bid[]> {
+    const cursor = this.collection().find<DbBid>(filter);
     const dbBids = await cursor.toArray();
     return dbBids.map(transformBid);
   }
