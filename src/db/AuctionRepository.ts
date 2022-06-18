@@ -58,7 +58,7 @@ export class AuctionRepository extends RepositoryBase<Auction> {
   }
 
   findAll(): Promise<Auction[]> {
-    const cursor = this.collection().find<DBAuction>({});
+    const cursor = this.db.collection(AUCTIONS_COLLECTION).find<DBAuction>({});
     return cursor.map(transformAuction).toArray();
   }
 
