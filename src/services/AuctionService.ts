@@ -1,4 +1,4 @@
-import {Auction, AuctionRepository} from "../db/AuctionRepository";
+import {Auction, AuctionRepository, NewAuction} from "../db/AuctionRepository";
 import {Db} from "mongodb";
 
 export class AuctionService {
@@ -8,8 +8,8 @@ export class AuctionService {
         this.auctionRepository = new AuctionRepository(db)
     }
 
-    async create(auction: Auction) {
-        await this.auctionRepository.create(auction)
+    async create(auction: NewAuction): Promise<Auction> {
+        return this.auctionRepository.create(auction)
     }
 
     async deleteAll() {

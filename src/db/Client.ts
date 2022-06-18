@@ -1,5 +1,5 @@
 import {RepositoryBase, WithoutId} from './BaseRepository';
-import {ObjectId} from "mongodb";
+import {ObjectId, WithId} from 'mongodb';
 
 export interface Client {
   id: string;
@@ -7,6 +7,8 @@ export interface Client {
   username?: string;
   chatId: number;
 }
+
+type DbClient = WithId<Omit<Client, 'id'>>;
 
 export class ClientRepository extends RepositoryBase<Client> {
   collectionName = 'clients';
@@ -28,10 +30,18 @@ export class ClientRepository extends RepositoryBase<Client> {
     };
   }
 
-  async findClient(telegramId: number) {
-    return this.collection().findOne({
+  async findClient(telegramId: number): Promise<Client | undefined> {
+    const dbClient = await this.collection<DbClient>().findOne({
       telegramId,
     });
+    if (!dbClient) {
+      return undefined;
+    }
+    const {_id, ...dbClientData} = dbClient;
+    return {
+      id: _id.toString(),
+      ...dbClientData,
+    };
   }
 
   async findById(userId: string): Promise<Client | null> {

@@ -1,6 +1,5 @@
-import {Db, Filter, ObjectId, WithId} from 'mongodb';
+import {Db, Filter, WithId} from 'mongodb';
 import {RepositoryBase} from './BaseRepository';
-import {randomUUID} from 'crypto';
 
 export const BIDS_COLLECTION = 'bids';
 
@@ -13,6 +12,11 @@ export type Bid = {
 
 type DbBid = WithId<Bid>;
 
+const transformBid = ({_id, ...dbBid}: DbBid) => ({
+  ...dbBid,
+  id: _id.toString(),
+});
+
 export class BidRepository extends RepositoryBase<Bid> {
   constructor(db: Db) {
     super(BIDS_COLLECTION, db);
@@ -23,35 +27,29 @@ export class BidRepository extends RepositoryBase<Bid> {
   }
 
   async makeBid(bid: Omit<Bid, 'createdAt' | 'id'>) {
-    return await this.collection<Omit<DbBid, '_id'>>().insertOne({
-      id: randomUUID(),
+    console.log('inserting with client id', bid.clientId);
+    return await this.collection<Omit<DbBid, '_id' | 'id'>>().insertOne({
       amount: bid.amount,
       auctionId: bid.auctionId,
       clientId: bid.clientId,
     });
   }
 
-  async findAll(): Promise<DbBid[]> {
+  async findAll(): Promise<Bid[]> {
     const cursor = this.collection().find<DbBid>({});
-    return cursor.toArray();
+    const dbBids = await cursor.toArray();
+    return dbBids.map(transformBid);
   }
 
-  async findHighest(auctionId: string): Promise<DbBid> {
+  async findHighest(auctionId: string): Promise<Bid | undefined> {
     const cursor = this.collection()
       .find<DbBid>({auctionId})
       .sort({amount: -1})
       .limit(1);
     const bids = await cursor.toArray();
-    return bids[0];
-  }
-
-  async findBetById(id: string) {
-    const bet = await this.collection().findOne({
-      _id: new ObjectId(id),
-    });
-    if (!bet) {
-      return null;
+    if (!bids.length) {
+      return undefined;
     }
-    return bet;
+    return transformBid(bids[0]);
   }
 }
