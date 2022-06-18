@@ -292,12 +292,15 @@ getDb().then(db => {
           await ctx.reply('no matched auction')
           return
         }
+        const bidRepo = new BidRepository(ctx.db)
+        const bids = await bidRepo.findAll({auctionId: matchedAuction.id})
         const caption = `Title: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBet: *${matchedAuction.startBet}*\n`
         await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
           caption, parse_mode: 'MarkdownV2', reply_markup: {
-            inline_keyboard: [
-              [{text: 'test', callback_data: 'data'}]
-            ]
+            inline_keyboard: bids.map(bid => [{
+              text: `user: ${bid.clientId} – ${bid.amount}`,
+              callback_data: 'test',
+            }]) // TODO: get by uniq user and highes bids
           }
         })
       }
