@@ -36,9 +36,9 @@ export class BidRepository extends RepositoryBase<Bid> {
     return cursor.toArray();
   }
 
-  async findHighest(auctionId?: string): Promise<DbBid> {
+  async findHighest(auctionId: string): Promise<DbBid> {
     const cursor = this.collection()
-      .find<DbBid>({...(auctionId ? {auctionId} : {})})
+      .find<DbBid>({auctionId})
       .sort({amount: -1})
       .limit(1);
     const bids = await cursor.toArray();
