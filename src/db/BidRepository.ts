@@ -1,5 +1,6 @@
 import {Db, Filter, WithId} from 'mongodb';
 import {RepositoryBase} from './BaseRepository';
+import {randomUUID} from "crypto";
 
 export const BIDS_COLLECTION = 'bids';
 
@@ -28,10 +29,12 @@ export class BidRepository extends RepositoryBase<Bid> {
 
   async makeBid(bid: Omit<Bid, 'createdAt' | 'id'>) {
     console.log('inserting with client id', bid.clientId);
-    return await this.collection<Omit<DbBid, '_id' | 'id'>>().insertOne({
+    console.log(typeof bid.clientId)
+    return await this.db.collection(BIDS_COLLECTION).insertOne({
       amount: bid.amount,
       auctionId: bid.auctionId,
       clientId: bid.clientId,
+      id: randomUUID(),
     });
   }
 

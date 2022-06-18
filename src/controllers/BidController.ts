@@ -24,6 +24,8 @@ export class BidController extends BidControllerBase<ClientAppContext> {
     const bidAmountStr = this.ctx.message.text.split(' ')[1];
     const notExistErrorMessage = validateByExists(bidAmountStr);
 
+    console.log('bid42', notExistErrorMessage, bidAmountStr);
+
     if (notExistErrorMessage) {
       await this.ctx.reply(notExistErrorMessage);
       return;
@@ -55,9 +57,11 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       auctionId: currentAuction.id,
       amount: bidAmount,
     };
+    console.log('bid42', bid);
     const newBid = await bidRepository.makeBid(bid);
+    console.log('new42', newBid);
 
-    console.log('test42', newBid.insertedId.toString(), currentAuction.id);
+    // console.log('test42', newBid.insertedId.toString(), currentAuction.id);
     await auctionRepository.update(
       currentAuction.id,
       newBid.insertedId.toString()
