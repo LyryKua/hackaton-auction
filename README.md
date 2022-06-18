@@ -5,7 +5,7 @@
 [t.me/hackaton_auction_bot](https://t.me/hackaton_auction_bot)
 
 ### DB Schema
-![](./docs/botBD.png)
+![](docs/botDB.png)
 
 ### Services/API
 ```js
