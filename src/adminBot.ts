@@ -1,25 +1,22 @@
-import {Telegraf, Scenes, Middleware} from 'telegraf';
+import {Middleware, Scenes, Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {MongoClient} from 'mongodb';
 import {AppContext, VolunteerSessionData} from './types';
 import {Auction, AuctionRepository, NewAuction} from './db/AuctionRepository';
-import {arrayOf, mockAuction, mockAuctions, mockBid} from './db/mockData';
+import {arrayOf, mockAuction, mockBid} from './db/mockData';
 import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {clientBot} from './clientBot';
-import {VolunteerRepository} from './db/VolunteerRepository';
 import {BidRepository} from './db/BidRepository';
 import {
   SceneContextScene,
   SceneSession,
   SceneSessionData,
 } from 'telegraf/typings/scenes';
-import {AuctionService} from "./services/AuctionService";
-import {randomUUID} from "crypto";
-import {PhotoSize} from "typegram";
-import {VolunteerService} from "./services/VolunteerService";
-import {BidService} from "./services/BidService";
+import {AuctionService} from './services/AuctionService';
+import {randomUUID} from 'crypto';
+import {VolunteerService} from './services/VolunteerService';
+import {BidService} from './services/BidService';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
 
@@ -123,14 +120,14 @@ getDb().then(db => {
       if (currentStep < auctionFields.length) {
         await ctx.reply(auctionFields[currentStep].prompt);
       } else {
-        const auctionsService = new AuctionService(ctx.db)
-        const auction : Auction ={
+        const auctionsService = new AuctionService(ctx.db);
+        const auction: Auction = {
           ...auctionData,
-        id: randomUUID(),
+          id: randomUUID(),
           volunteerId: ctx.session.volunteer?.id!,
-        status: 'opened',
-      }
-      await auctionsService.create(auction)
+          status: 'opened',
+        };
+        await auctionsService.create(auction);
         ctx.session.activeAuction = auction;
         await ctx.reply(`Вітаю!
 Аукціон створено.
@@ -147,7 +144,6 @@ getDb().then(db => {
       startBet: 0,
       volunteerId: volunteer.id!,
       status: 'opened',
-
     };
     createAuctionScene.on('text', async ctx => {
       if (currentStep >= auctionFields.length) {
@@ -192,17 +188,17 @@ getDb().then(db => {
   });
 
   adminBot.start(async ctx => {
-    const volunteerService = new VolunteerService(ctx.db)
+    const volunteerService = new VolunteerService(ctx.db);
 
-  const { id: telegramId } = ctx.from
-  const volunteer = {
-    id: randomUUID(),
-    telegramId,
-  }
-  await volunteerService.create(volunteer)
-  ctx.session.volunteer = volunteer;
+    const {id: telegramId} = ctx.from;
+    const volunteer = {
+      id: randomUUID(),
+      telegramId,
+    };
+    await volunteerService.create(volunteer);
+    ctx.session.volunteer = volunteer;
 
-  await ctx.reply(` 
+    await ctx.reply(` 
 Вітаю!
 
 Користуватися цим ботом дуже легко. Основні команди:
@@ -219,7 +215,6 @@ getDb().then(db => {
 
 Не гаємо часу і розпочинаємо! 
 Успіхів.`);
-
   });
 
   // type AuctionStageContext = WrapSceneContext<AuctionSceneContext>;
@@ -249,25 +244,27 @@ getDb().then(db => {
       ctx.reply('Сильно хитрий?');
       return;
     }
-    const auctionsService = new AuctionService(ctx.db)
-    await auctionsService.deleteAll()
-    const bidService = new BidService(ctx.db)
-  await bidService.deleteAll()
+    const auctionsService = new AuctionService(ctx.db);
+    await auctionsService.deleteAll();
+    const bidService = new BidService(ctx.db);
+    await bidService.deleteAll();
   });
 
   adminBot.command('fill_mock', async ctx => {
-    const auctions = arrayOf(3, () => mockAuction())
-  const bids = arrayOf(6, () => mockBid())
+    const auctions = arrayOf(3, () => mockAuction());
+    const bids = arrayOf(6, () => mockBid());
 
-  const auctionsService = new AuctionService(ctx.db)
+    const auctionsService = new AuctionService(ctx.db);
     for (const auction of auctions) {
-    await auctionsService.create(auction);
-  }
-    const bidService = new BidService(ctx.db)
-  for (const bid of bids) {
-    await bidService.create(bid);
-  }
-    await ctx.reply('Created a couple of mock auctions for you, anything else?');
+      await auctionsService.create(auction);
+    }
+    const bidService = new BidService(ctx.db);
+    for (const bid of bids) {
+      await bidService.create(bid);
+    }
+    await ctx.reply(
+      'Created a couple of mock auctions for you, anything else?'
+    );
   });
 
   adminBot.command('list_a', async ctx => {
@@ -291,7 +288,6 @@ getDb().then(db => {
           auction => auction.id === ctx.match[0]
         );
         await ctx.reply(JSON.stringify(matchedAuction, null, 2));
-
       }
     );
   });
