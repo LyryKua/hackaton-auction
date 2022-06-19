@@ -8,7 +8,11 @@ import {launchBot} from './launchBot';
 import {ClientMongoRepository} from './db/ClientRepository';
 import {clientBot} from './clientBot';
 import {BidMongoRepository} from './db/BidRepository';
-import {SceneContextScene, SceneSession, SceneSessionData,} from 'telegraf/typings/scenes';
+import {
+  SceneContextScene,
+  SceneSession,
+  SceneSessionData,
+} from 'telegraf/typings/scenes';
 import {AuctionService} from './services/AuctionService';
 import {VolunteerService} from './services/VolunteerService';
 import {getDb} from './db/connection';
@@ -176,7 +180,6 @@ getDb().then(db => {
       }
     });
     createAuctionScene.on('photo', async ctx => {
-      const mediaGroupId = ctx.message.media_group_id;
       if (currentStep >= auctionFields.length) {
         return;
       }
@@ -185,11 +188,7 @@ getDb().then(db => {
         case 'photos': {
           const photos = ctx.message.photo;
           auctionData.photos.push(photos[photos.length - 1]);
-          if (!mediaGroupId) {
-            await debouncedNext(ctx);
-          } else {
-            await debouncedNext(ctx);
-          }
+          await debouncedNext(ctx);
           break;
         }
         default:
