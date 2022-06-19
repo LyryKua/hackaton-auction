@@ -1,15 +1,19 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {AuctionMongoRepository, DbAuction,} from './db/AuctionRepository';
+import {AuctionMongoRepository, DbAuction} from './db/AuctionRepository';
 import {ClientAppContext} from './types';
-import {SubscriptionMongoRepository,} from './db/SubscriptionRepository';
-import {BidController, BidVolunteerController,} from './controllers/BidController';
+import {SubscriptionMongoRepository} from './db/SubscriptionRepository';
+import {
+  BidController,
+  BidVolunteerController,
+} from './controllers/BidController';
 import {launchBot} from './launchBot';
 import {ClientMongoRepository} from './db/ClientRepository';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
 import {BidMongoRepository} from './db/BidRepository';
 import {PhotoMongoRepository} from './db/PhotoRepository';
+import {InputMediaPhoto} from 'telegraf/types';
 
 const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
@@ -71,14 +75,32 @@ getDb().then(db => {
     const caption = `${auction.title}
 ${auction.description}`;
     const photoRepository = new PhotoMongoRepository(ctx.db);
-    const photo = await photoRepository.getForAuction(auction);
+    const photos = await photoRepository.getForAuction(auction);
 
     try {
-      if (photo) {
-        await ctx.replyWithPhoto({source: photo.data}, {caption});
-      } else {
+      if (!photos.length) {
         await ctx.reply(caption);
+        return;
       }
+      if (photos.length === 1) {
+        const photo = photos[0];
+        await ctx.replyWithPhoto(
+          {source: photo.data},
+          {
+            caption,
+          }
+        );
+        return;
+      }
+      // await ctx.replyWithPhoto({source: photo.data}, {caption});
+      const mediaGroupReply: ReadonlyArray<InputMediaPhoto> = photos.map(
+        photo => ({
+          type: 'photo',
+          media: {source: photo.data},
+        })
+      );
+      await ctx.replyWithMediaGroup(mediaGroupReply);
+      await ctx.reply(caption);
     } catch (err) {
       console.error(err);
       await ctx.reply('photo error');
