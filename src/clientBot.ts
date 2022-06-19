@@ -132,7 +132,6 @@ ${auction.description}`;
   clientBot.command('make_bid', async ctx => {
     const betController = new BidController(ctx);
     const {result, defeatedBidder} = await betController.makeBid();
-    console.log({result, defeatedBidder, client: ctx.session.client?.id});
     if (
       result === 'success' &&
       defeatedBidder &&
