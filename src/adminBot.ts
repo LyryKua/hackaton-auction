@@ -89,7 +89,6 @@ getDb().then(db => {
   adminBot.use(async (ctx, next) => {
     const auctionRepo = new AuctionMongoRepository(ctx.db);
     const volunteer = ctx.session.volunteer;
-    console.log('test42', volunteer);
     if (volunteer) {
       ctx.session.activeAuction =
         (await auctionRepo.findActive(volunteer._id.toString())) || undefined;
@@ -107,7 +106,7 @@ getDb().then(db => {
       await ctx.reply(
         'Щось мабуть пішло не так, дуже шкода, бумласка, спробуйте почати заново /start'
       );
-      createAuctionScene.leave();
+      await ctx.scene.leave();
       return;
     }
     if (ctx.session.activeAuction) {
@@ -120,24 +119,24 @@ getDb().then(db => {
         return;
       }
     }
-    const next = async () => {
+    const next = async (ctx: AuctionSceneContext) => {
       currentStep++;
       if (currentStep < auctionFields.length) {
         await ctx.reply(auctionFields[currentStep].prompt);
       } else {
         const auctionsService = new AuctionService(ctx.db, adminBot);
-        const Auction: Auction = {
+        const newAuction: Auction = {
           ...auctionData,
           volunteerId: volunteer._id.toString(),
           status: 'opened',
         };
-        const auction = await auctionsService.create(Auction);
+        const auction = await auctionsService.create(newAuction);
         ctx.session.activeAuction = auction;
         await ctx.reply(`Вітаю!
 Аукціон створено.
 Наступний крок — залучити якнайбільше учасників.
 Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction._id.toString()}`);
-        createAuctionScene.leave();
+        await ctx.scene.leave();
       }
     };
     await ctx.reply(auctionFields[currentStep].prompt);
@@ -157,17 +156,17 @@ getDb().then(db => {
       switch (currentField) {
         case 'title': {
           auctionData.title = ctx.message.text;
-          await next();
+          await next(ctx);
           break;
         }
         case 'description': {
           auctionData.description = ctx.message.text;
-          await next();
+          await next(ctx);
           break;
         }
         case 'startBid': {
           auctionData.startBid = Number(ctx.message.text);
-          await next();
+          await next(ctx);
           break;
         }
         default:
@@ -182,7 +181,7 @@ getDb().then(db => {
       switch (currentField) {
         case 'photos': {
           auctionData.photos = ctx.message.photo;
-          await next();
+          await next(ctx);
           break;
         }
         default:
