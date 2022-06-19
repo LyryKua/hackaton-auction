@@ -189,7 +189,7 @@ ${auction.description}`;
       await ctx.reply('Ставок ще нема, введіть /bid щоб зробити ставку.');
       return;
     }
-    await ctx.reply(`Лідируюча ставка ${highestBid.amount}грн.`);
+    await ctx.reply(`Лідируюча ставка – ${highestBid.amount}грн.`);
   });
 
   clientBot.command('about', ctx => {
