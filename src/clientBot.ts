@@ -171,7 +171,9 @@ ${auction.description}`;
       }
       await clientBot.telegram.sendMessage(
         client.chatId,
-        'Вашу ставку перебито'
+        `Нова виграшна ставка - _todo_ грн
+Бажаєте зробити нову ставку? Тоді
+тисни кнопку нижче`
       );
     }
   };
@@ -195,7 +197,8 @@ ${auction.description}`;
       clientId: ctx.session.client?._id.toString() || '',
       type: 'active',
     });
-    ctx.reply('Ви підписались на оновлення');
+    ctx.reply(`Підписка на оновлення активована.
+Хочеш зупинити? Використовуй команду /unsubscribe.`);
   });
 
   clientBot.command('unsubscribe', async ctx => {
@@ -205,7 +208,8 @@ ${auction.description}`;
       clientId: ctx.session.client?._id.toString() || '',
     });
     if (result.ok) {
-      await ctx.reply('Ви відписались від оновлень');
+      await ctx.reply(`Підписка деактивована.
+Хочеш слідкувати за оновленнями, обирай опцію /subscribe`);
     } else {
       await ctx.reply('Щось пішло не так');
     }
