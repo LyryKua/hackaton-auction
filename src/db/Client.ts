@@ -52,10 +52,21 @@ export class ClientRepository extends RepositoryBase<Client> {
 
   findByAuctionId(auctionIds: string[]): Promise<Client[] | null> {
     const cursor = this.collection().find({});
-    return cursor.toArray()
+    return cursor.toArray();
   }
 
   async findClientByUsername(username: string) {
     return this.collection().findOne({username});
+  }
+
+  async findUsers(userIds: string[]): Promise<Record<string, Client>> {
+    const users = await this.collection().find({
+      _id: {$in: userIds.map(userId => new ObjectId(userId))},
+    });
+    const usernames: Record<string, Client> = {};
+    await users.forEach(user => {
+      usernames[user._id.toString()] = user;
+    });
+    return usernames;
   }
 }

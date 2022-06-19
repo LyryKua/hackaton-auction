@@ -74,18 +74,35 @@ export class BidVolunteerController extends BidControllerBase<AppContext> {
       await this.ctx.reply('Щоб створити аукціон введіть /create');
       return;
     }
-    const highestBid = await bidRepository.findHighest(activeAuction.id);
-    if (!highestBid) {
+    const highestBids = await bidRepository.findLastHighest(activeAuction.id);
+    if (!highestBids.length) {
       await this.ctx.reply('Ставок ще не було.');
       return;
     }
+
     const clientRepo = new ClientRepository('clients', this.ctx.db);
-    const user = await clientRepo.findById(highestBid.clientId);
+    const users = await clientRepo.findUsers(
+      highestBids.map(bid => bid.clientId)
+    );
+    const countWord: {[i: number]: string} = {
+      1: 'Остання ставка',
+      2: 'Останні дві ставки',
+      3: 'Останні три ставки',
+    };
+    const title = countWord[highestBids.length];
+    const showUser = (clientId: string) => {
+      const user = users[clientId];
+      if (user.username) {
+        return `@${user.username}`;
+      }
+      return `tg://user?id=${user.telegramId}`;
+    };
 
     await this.ctx.reply(
-      `Найбільша ставка: ${highestBid.amount} від ${
-        user ? `@${user.username}` : highestBid.clientId
-      }`
+      `${title}:
+${highestBids
+  .map(bid => `- UAH ${bid.amount} від ${showUser(bid.clientId)}`)
+  .join('\n')}`
     );
   }
 

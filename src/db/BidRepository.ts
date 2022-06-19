@@ -1,6 +1,6 @@
 import {Db, Filter, Sort, WithId} from 'mongodb';
 import {RepositoryBase} from './BaseRepository';
-import {randomUUID} from "crypto";
+import {randomUUID} from 'crypto';
 
 export const BIDS_COLLECTION = 'bids';
 
@@ -52,5 +52,14 @@ export class BidRepository extends RepositoryBase<Bid> {
       return undefined;
     }
     return transformBid(bids[0]);
+  }
+
+  async findLastHighest(auctionId: string, count = 3): Promise<Bid[]> {
+    const cursor = this.collection()
+      .find<DbBid>({auctionId})
+      .sort({amount: -1})
+      .limit(count);
+    const bids = await cursor.toArray();
+    return bids.map(transformBid);
   }
 }
