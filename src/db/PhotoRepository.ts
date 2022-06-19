@@ -1,35 +1,50 @@
-import {Db, WithId} from 'mongodb';
+import {Binary, Db, ObjectId, WithId, WithoutId} from 'mongodb';
 import {Auction} from './AuctionRepository';
 
-const PHOTOS_COLLECTION = 'photos'
+const PHOTOS_COLLECTION = 'photos';
 
 export interface PhotoBlob {
+  _id: ObjectId;
   data: Buffer;
 }
 
-export type DbPhotoBlob = WithId<PhotoBlob>
+export interface DbPhotoBlob {
+  _id: ObjectId;
+  data: Binary;
+}
 
 export interface PhotoRepository {
-  create(auction: PhotoBlob): Promise<DbPhotoBlob>;
+  create(auction: WithoutId<PhotoBlob>): Promise<PhotoBlob>;
 
-  getForAuction(auction: Auction): Promise<DbPhotoBlob | null>;
+  getForAuction(auction: Auction): Promise<PhotoBlob | undefined>;
 }
 
 export class PhotoMongoRepository implements PhotoRepository {
   constructor(private readonly db: Db) {}
 
-  async create(photoBlob: PhotoBlob): Promise<DbPhotoBlob> {
-    const {insertedId} = await this.db.collection<PhotoBlob>(PHOTOS_COLLECTION).insertOne(photoBlob)
+  async create(photoBlob: WithoutId<PhotoBlob>): Promise<PhotoBlob> {
+    const {insertedId} = await this.db
+      .collection(PHOTOS_COLLECTION)
+      .insertOne(photoBlob);
     return {
       ...photoBlob,
       _id: insertedId,
-    }
+    };
   }
 
-  async getForAuction(auction: Auction): Promise<DbPhotoBlob | null> {
+  async getForAuction(auction: Auction): Promise<PhotoBlob | undefined> {
     const {photoBlobId} = auction;
-    return await this.db.collection(PHOTOS_COLLECTION).findOne<DbPhotoBlob>({
-      _id: photoBlobId,
-    })
+    const photo = await this.db
+      .collection(PHOTOS_COLLECTION)
+      .findOne<DbPhotoBlob>({
+        _id: photoBlobId,
+      });
+    if (!photo) {
+      return undefined;
+    }
+    return {
+      ...photo,
+      data: photo.data.buffer,
+    };
   }
 }
