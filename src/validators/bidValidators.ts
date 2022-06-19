@@ -5,7 +5,7 @@ const invalidMessages = {
   notEnoughAmount: (limit: number) =>
     `Ваша ставка замала, будь ласка зробіть ставку більше ніж ${limit}`,
   empty: (limit?: number) =>
-    `Будьласочка, введіть суму цифрами в форматі /make_bid ${limit || '1000'}`,
+    `Будьласочка, введіть суму цифрами в форматі /bid ${limit || '1000'}`,
 };
 
 export const validateByExists = (bidAmountStr: string): string | null => {

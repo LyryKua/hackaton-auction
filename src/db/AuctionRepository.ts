@@ -47,7 +47,9 @@ export class AuctionMongoRepository implements AuctionRepository {
           _id: new ObjectId(auctionId),
         },
         {
-          status: 'closed',
+          $set: {
+            status: 'closed',
+          }
         }
     );
   }
