@@ -10,6 +10,8 @@ import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
+import {BidService} from './services/BidService';
+import {BidRepository} from './db/BidRepository';
 
 const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
@@ -113,8 +115,25 @@ ${auction.description}`;
     await ctx.reply('Ви відписались від оновлень');
   });
 
-  clientBot.command('max_bid', ctx => {
-    ctx.reply('Максимальна ставка 100500');
+  clientBot.command('top', async ctx => {
+    const auction = ctx.session.auction;
+    if (!auction) {
+      await ctx.reply(
+        'Якась халепа сталась, спробуйте перейти за лінкою аукціона ще раз'
+      );
+      return;
+    }
+    if (auction.status !== 'opened') {
+      await ctx.reply('Цей аукціон вже скінчився');
+      return;
+    }
+    const bidRepository = new BidRepository(ctx.db);
+    const highestBid = await bidRepository.findHighest(auction.id);
+    if (!highestBid) {
+      await ctx.reply('Ставок ще нема, введіть /bid щоб зробити ставку.');
+      return;
+    }
+    await ctx.reply(`Лідируюча ставка ${highestBid.amount}грн.`);
   });
 
   clientBot.command('about', ctx => {
