@@ -1,58 +1,54 @@
-import {Db, Filter, ObjectId, WithId as WithMongoId} from 'mongodb';
+import {Db, Filter, ObjectId, WithId} from 'mongodb';
 import {PhotoSize} from 'typegram';
-import {RepositoryBase, WithoutId} from './BaseRepository';
 
 export const AUCTIONS_COLLECTION = 'auctions';
 
-export interface Auction {
-  id: string;
+export type Auction = {
   title: string;
   description: string;
   photos: PhotoSize[];
-  photoBlobId: ObjectId;
+  photoBlobId?: ObjectId;
   startBid: number;
   volunteerId: string;
   status: 'opened' | 'closed';
+};
+
+export type DbAuction = WithId<Auction>;
+
+export interface AuctionRepository {
+  create(auction: Auction): Promise<DbAuction>;
+
+  close(id: string, volunteerId: string): Promise<void>;
+
+  deleteMany(filter: Filter<DbAuction>): Promise<void>;
+
+  findAll(): Promise<DbAuction[]>;
+
+  findOne(id: string): Promise<DbAuction | null>;
+
+  findActive(volunteerId: string): Promise<DbAuction | null>;
 }
 
-export type NewAuction = Omit<Auction, 'id' | 'photoBlobId'>;
+export class AuctionMongoRepository implements AuctionRepository {
+  constructor(private readonly db: Db) {}
 
-type DBAuction = WithMongoId<WithoutId<Auction>>;
-// type WithNormalId<T extends Record<string, unknown>> = T & {id: string};
-//
-// const transformId = <T extends Record<string, unknown>>({
-//   _id,
-//   ...rest
-// }: WithId<T>): Omit<T, '_id'> & {id: string} => {
-//   const newVar = {
-//     id: _id.toString(),
-//     ...rest,
-//   };
-//   return newVar;
-// };
-
-const transformAuction = ({_id, status, ...auction}: DBAuction): Auction => ({
-  id: _id.toString(),
-  ...auction,
-  status: status || 'opened',
-});
-
-export class AuctionRepository extends RepositoryBase<Auction> {
-  constructor(db: Db) {
-    super(AUCTIONS_COLLECTION, db);
+  async create(auction: Auction): Promise<DbAuction> {
+    const {insertedId} = await this.db.collection<Auction>(AUCTIONS_COLLECTION).insertOne(auction)
+    return {
+      ...auction,
+      _id: insertedId,
+    }
   }
 
   async close(auctionId: string, volunteerId: string) {
-    await this.collection().updateOne(
-      {
-        volunteerId,
-        _id: new ObjectId(auctionId),
-      },
-      {
-        $set: {
-          status: 'closed',
+    await this.db.collection(AUCTIONS_COLLECTION).updateOne(
+        {
+          volunteerId,
+          _id: new ObjectId(auctionId),
         },
-      }
+        {
+          status: 'closed',
+        }
     );
   }
 
@@ -60,41 +56,21 @@ export class AuctionRepository extends RepositoryBase<Auction> {
     await this.db.collection(AUCTIONS_COLLECTION).deleteMany(filter);
   }
 
-  findAll(): Promise<Auction[]> {
-    const cursor = this.db
-      .collection<Auction>(AUCTIONS_COLLECTION)
-      .find<DBAuction>({});
-    return cursor.map(transformAuction).toArray();
+  findAll(): Promise<DbAuction[]> {
+    const cursor = this.db.collection<Auction>(AUCTIONS_COLLECTION).find<DbAuction>({});
+    return cursor.toArray();
   }
 
-  async findOne(auctionId: string): Promise<Auction | null> {
-    const auction = await this.db
-      .collection<Auction>(AUCTIONS_COLLECTION)
-      .findOne({
-        _id: new ObjectId(auctionId),
-      });
-    if (!auction) {
-      return null;
-    }
-    return transformAuction(auction);
+  findOne(id: string): Promise<DbAuction | null> {
+    return this.db.collection<Auction>(AUCTIONS_COLLECTION).findOne<DbAuction>({
+      _id: new ObjectId(id),
+    });
   }
 
-  async findActive(volunteerId: string): Promise<Auction | null> {
-    const auction = await this.collection<Auction>().findOne({
+  findActive(volunteerId: string): Promise<DbAuction | null> {
+    return this.db.collection<DbAuction>(AUCTIONS_COLLECTION).findOne<DbAuction>({
       volunteerId,
       status: 'opened',
     });
-    if (!auction) {
-      return null;
-    }
-    return transformAuction(auction);
-  }
-
-  async update(id: string, betId: string) {
-    // @ts-ignore
-    await this.collection().updateOne(
-      {_id: new ObjectId(id)},
-      {$push: {betIds: betId}}
-    );
   }
 }

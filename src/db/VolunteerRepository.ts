@@ -1,37 +1,36 @@
-import {Db, Filter, WithId} from 'mongodb';
-import {RepositoryBase, WithoutId} from './BaseRepository';
+import {Db, WithId} from 'mongodb';
 
-export const VOLUNTEERS_COLLECTION = 'volunteers';
+export const VOLUNTEERS_COLLECTION = 'volunteers'
 
 export type Volunteer = {
-  id: string;
-  telegramId: number;
-  chatId: number;
-  username?: string;
-};
+    telegramId: number;
+    chatId: number;
+    username?: string;
+}
 
-export class VolunteerRepository extends RepositoryBase<Volunteer> {
-  constructor(db: Db) {
-    super(VOLUNTEERS_COLLECTION, db);
-  }
+export type DbVolunteer = WithId<Volunteer>;
 
-  async findOne(telegramId: number): Promise<Volunteer | undefined> {
-    const dbVolunteer = await this.collection<
-      WithId<WithoutId<Volunteer>>
-    >().findOne({
-      telegramId,
-    });
-    if (!dbVolunteer) {
-      return undefined;
+export interface VolunteerRepository {
+    create(volunteer: Volunteer): Promise<DbVolunteer>;
+
+    findOne(telegramId: number): Promise<DbVolunteer | null>;
+}
+
+export class VolunteerMongoRepository implements VolunteerRepository {
+    constructor(private readonly db: Db) {}
+
+    async create(volunteer: Volunteer): Promise<DbVolunteer> {
+        const {insertedId} = await this.db.collection(VOLUNTEERS_COLLECTION).insertOne(volunteer);
+
+        return {
+            ...volunteer,
+            _id: insertedId,
+        };
     }
-    const {_id, ...dbVolunteerData} = dbVolunteer;
-    return {
-      id: _id.toString(),
-      ...dbVolunteerData,
-    };
-  }
 
-  async deleteMany(filter: Filter<Volunteer> = {}) {
-    await this.db.collection(VOLUNTEERS_COLLECTION).deleteMany(filter);
-  }
+    async findOne(telegramId: number): Promise<DbVolunteer | null> {
+        return  this.db.collection<Volunteer>(VOLUNTEERS_COLLECTION).findOne({
+            telegramId,
+        });
+    }
 }

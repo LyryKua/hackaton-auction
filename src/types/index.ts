@@ -1,12 +1,12 @@
 import {Context} from 'telegraf';
 import {Db} from 'mongodb';
-import {Auction} from '../db/AuctionRepository';
-import {Client} from '../db/Client';
-import {Volunteer} from "../db/VolunteerRepository";
+import {DbAuction} from '../db/AuctionRepository';
+import {DbClient} from '../db/ClientRepository';
+import {DbVolunteer} from "../db/VolunteerRepository";
 
 export interface ClientSessionData {
-  auction?: Auction;
-  client?: Client;
+  auction?: DbAuction;
+  client?: DbClient;
 }
 
 export interface ClientAppContext extends Context {
@@ -15,8 +15,8 @@ export interface ClientAppContext extends Context {
 }
 
 export interface VolunteerSessionData {
-  volunteer?: Volunteer;
-  activeAuction?: Auction;
+  volunteer?: DbVolunteer;
+  activeAuction?: DbAuction;
 }
 
 export interface AppContext extends Context {

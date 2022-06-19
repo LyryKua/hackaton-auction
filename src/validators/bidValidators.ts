@@ -1,4 +1,4 @@
-import {Auction, AuctionRepository} from '../db/AuctionRepository';
+import {Auction, AuctionRepository, DbAuction} from '../db/AuctionRepository';
 import {BidRepository} from '../db/BidRepository';
 
 const invalidMessages = {
@@ -16,14 +16,14 @@ export const validateByExists = (bidAmountStr: string): string | null => {
 
 export const isValidByAmount = async (
   bidRepository: BidRepository,
-  auction: Auction,
+  auction: DbAuction,
   bidAmount: number
 ): Promise<string | null> => {
   if (auction.startBid > bidAmount) {
     return invalidMessages.notEnoughAmount(auction.startBid);
   }
 
-  const highestBid = await bidRepository.findHighest(auction.id);
+  const highestBid = await bidRepository.findHighest(auction._id.toString());
 
   if (!highestBid) {
     return null;

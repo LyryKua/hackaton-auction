@@ -1,69 +1,68 @@
-import {RepositoryBase, WithoutId} from './BaseRepository';
-import {ObjectId, WithId} from 'mongodb';
+import {Db, ObjectId, WithId} from 'mongodb';
 
-export interface Client {
-  id: string;
+const CLIENTS_COLLECTION = 'clients';
+
+export type Client = {
   telegramId: number;
-  username?: string;
   chatId: number;
+  username?: string;
 }
 
-type DbClient = WithId<Omit<Client, 'id'>>;
+export type DbClient = WithId<Client>;
 
-export class ClientRepository extends RepositoryBase<Client> {
-  collectionName = 'clients';
+export interface ClientRepository {
+  register(clientData: Client): Promise<DbClient>; // TODO: rename to `create`
 
-  async register(clientData: WithoutId<Client>): Promise<Client> {
+  findClient(telegramId: number): Promise<DbClient | null>;
+
+  findById(id: string): Promise<DbClient | null>;
+
+  findClientByUsername(username: string): Promise<DbClient | null>;
+
+  findUsers(userIds: string[]): Promise<Record<string, DbClient>>; // TODO: this method should be in service
+}
+
+export class ClientMongoRepository implements ClientRepository {
+  constructor(private readonly db: Db) {}
+
+  async register(clientData: Client): Promise<DbClient> {
     const {telegramId, username, chatId} = clientData;
     const client = await this.findClient(telegramId);
     if (client) {
       return client;
     }
-    const newClient = await this.collection<WithoutId<Client>>().insertOne({
+    const { insertedId } = await this.db.collection<Client>(CLIENTS_COLLECTION).insertOne({
       telegramId,
       chatId,
       username,
     });
     return {
       ...clientData,
-      id: newClient.insertedId.toString(),
+      _id: insertedId,
     };
   }
 
-  async findClient(telegramId: number): Promise<Client | undefined> {
-    const dbClient = await this.collection<DbClient>().findOne({
+  findClient(telegramId: number): Promise<DbClient | null> {
+    return this.db.collection<Client>(CLIENTS_COLLECTION).findOne({
       telegramId,
-    });
-    if (!dbClient) {
-      return undefined;
-    }
-    const {_id, ...dbClientData} = dbClient;
-    return {
-      id: _id.toString(),
-      ...dbClientData,
-    };
+    })
   }
 
-  async findById(clientId: string): Promise<Client | null> {
-    return this.collection().findOne({
-      _id: new ObjectId(clientId),
+  findById(id: string): Promise<DbClient | null> {
+    return this.db.collection<Client>(CLIENTS_COLLECTION).findOne({
+      _id: new ObjectId(id),
     });
   }
 
-  findByAuctionId(auctionIds: string[]): Promise<Client[] | null> {
-    const cursor = this.collection().find({});
-    return cursor.toArray();
+  findClientByUsername(username: string) {
+    return this.db.collection<Client>(CLIENTS_COLLECTION).findOne({username});
   }
 
-  async findClientByUsername(username: string) {
-    return this.collection().findOne({username});
-  }
-
-  async findUsers(userIds: string[]): Promise<Record<string, Client>> {
-    const users = await this.collection().find({
+  async findUsers(userIds: string[]): Promise<Record<string, DbClient>> {
+    const users = await this.db.collection<Client>(CLIENTS_COLLECTION).find({
       _id: {$in: userIds.map(userId => new ObjectId(userId))},
     });
-    const usernames: Record<string, Client> = {};
+    const usernames: Record<string, DbClient> = {};
     await users.forEach(user => {
       usernames[user._id.toString()] = user;
     });

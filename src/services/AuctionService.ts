@@ -1,6 +1,6 @@
-import {Auction, AuctionRepository, NewAuction} from '../db/AuctionRepository';
+import {Auction, AuctionMongoRepository, AuctionRepository, DbAuction} from '../db/AuctionRepository';
 import {Db, ObjectId} from 'mongodb';
-import {PhotoRepository} from '../db/PhotoRepository';
+import {PhotoMongoRepository, PhotoRepository} from '../db/PhotoRepository';
 import {Telegraf} from 'telegraf';
 import * as request from 'request';
 import {AppContext} from "../types";
@@ -21,11 +21,11 @@ export class AuctionService {
   private readonly photosRepository: PhotoRepository;
 
   constructor(private readonly db: Db, private readonly bot: Telegraf<AppContext>) {
-    this.auctionRepository = new AuctionRepository(db);
-    this.photosRepository = new PhotoRepository(db);
+    this.auctionRepository = new AuctionMongoRepository(db);
+    this.photosRepository = new PhotoMongoRepository(db);
   }
 
-  async create(auction: NewAuction): Promise<Auction> {
+  async create(auction: Auction): Promise<DbAuction> {
     const fileId = auction.photos[auction.photos.length - 1].file_id;
     const fileUrl = await this.bot.telegram.getFileLink(fileId);
     const image = await requestImage(fileUrl.href);
@@ -34,12 +34,8 @@ export class AuctionService {
     });
     const newAuction = {
       ...auction,
-      photoBlobId: new ObjectId(photoRecord.id),
+      photoBlobId: new ObjectId(photoRecord._id.toString()),
     };
     return this.auctionRepository.create(newAuction);
-  }
-
-  async deleteAll() {
-    await this.auctionRepository.deleteMany();
   }
 }
