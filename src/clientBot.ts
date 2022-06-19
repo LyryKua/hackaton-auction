@@ -10,7 +10,6 @@ import {launchBot} from './launchBot';
 import {ClientRepository} from './db/Client';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
-import {BidService} from './services/BidService';
 import {BidRepository} from './db/BidRepository';
 
 const DB_URL = process.env.DB_URL;
