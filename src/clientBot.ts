@@ -1,7 +1,8 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {ClientAppContext} from './types';
 import {Auction, AuctionRepository} from './db/AuctionRepository';
+import {ClientAppContext} from './types';
+import {SubscriptionRepository} from './db/SubscriptionRepository';
 import {
   BidController,
   BidVolunteerController,
@@ -99,19 +100,75 @@ ${auction.description}`;
     //   ctx.replyWithPhoto(ctx.message.photo[0].file_id);
     // });
   });
+  const informDefeatedBidderIfNecessary = async (
+    ctx: ClientAppContext,
+    defeatedBidder: string
+  ) => {
+    if (!ctx.session.auction?.id) {
+      return;
+    }
+    const subscriptionRepo = new SubscriptionRepository(
+      'subscriptions',
+      ctx.db
+    );
+    const {result: isLostBidderSubscribed} =
+      await subscriptionRepo.isClientSubscribed(
+        ctx.session.auction?.id,
+        defeatedBidder
+      );
+    if (isLostBidderSubscribed) {
+      const clientRepository = new ClientRepository('clients', ctx.db);
+      const client = await clientRepository.findById(defeatedBidder);
+      if (!client) {
+        await ctx.reply('No such user');
+        return;
+      }
+      await clientBot.telegram.sendMessage(
+        client.chatId,
+        'Вашу ставку перебито'
+      );
+    }
+  };
 
   clientBot.command('make_bid', async ctx => {
     const betController = new BidController(ctx);
-
-    await betController.makeBid();
+    const {result, defeatedBidder} = await betController.makeBid();
+    if (
+      result === 'success' &&
+      defeatedBidder &&
+      ctx.session.client?.id !== defeatedBidder
+    ) {
+      await informDefeatedBidderIfNecessary(ctx, defeatedBidder);
+    }
   });
 
   clientBot.command('subscribe', async ctx => {
-    await ctx.reply('Ви підписались на оновлення');
+    const subscriptionRepo = new SubscriptionRepository(
+      'subscriptions',
+      ctx.db
+    );
+    await subscriptionRepo.subscribe({
+      auctionId: ctx.session.auction?.id || '',
+      clientId: ctx.session.client?.id || '',
+      type: 'active',
+    });
+    ctx.reply('Ви підписались на оновлення');
   });
 
   clientBot.command('unsubscribe', async ctx => {
-    await ctx.reply('Ви відписались від оновлень');
+    const subscriptionRepo = new SubscriptionRepository(
+      'subscriptions',
+      ctx.db
+    );
+    const result = await subscriptionRepo.unsubscribe({
+      auctionId: ctx.session.auction?.id || '',
+      clientId: ctx.session.client?.id || '',
+    });
+    if (result.ok) {
+      await ctx.reply('Ви відписались від оновлень');
+    } else {
+      await ctx.reply('Щось пішло не так');
+    }
   });
 
   clientBot.command('top', async ctx => {

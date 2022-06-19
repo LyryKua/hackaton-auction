@@ -9,7 +9,7 @@ import {isValidByAmount, validateByExists} from '../validators/bidValidators';
 class BidControllerBase<C extends Context> {
   constructor(protected ctx: NarrowedContext<C, MountMap['text']>) {}
 }
-
+const errorResponse = {result: 'error', defeatedBidder: null};
 export class BidController extends BidControllerBase<ClientAppContext> {
   async makeBid() {
     const client = this.ctx.session.client;
@@ -17,7 +17,7 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       await this.ctx.reply(
         'Ой, щось пішло геть не так, спробуйте заново зайти за лінкою на аукціон?'
       );
-      return;
+      return errorResponse;
     }
     const bidRepository = new BidRepository(this.ctx.db);
     const auctionRepository = new AuctionRepository(this.ctx.db);
@@ -26,7 +26,7 @@ export class BidController extends BidControllerBase<ClientAppContext> {
 
     if (notExistErrorMessage) {
       await this.ctx.reply(notExistErrorMessage);
-      return;
+      return errorResponse;
     }
 
     const bidAmount = Number(bidAmountStr);
@@ -36,7 +36,7 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       await this.ctx.reply(
         'Якась халепа сталась, мабуть цей аукціон вже скінчився? Спробуйте перейти за лінкою аукціона ще раз'
       );
-      return;
+      return errorResponse;
     }
 
     const notEnoughAmountErrorMessage = await isValidByAmount(
@@ -47,9 +47,10 @@ export class BidController extends BidControllerBase<ClientAppContext> {
 
     if (notEnoughAmountErrorMessage) {
       await this.ctx.reply(notEnoughAmountErrorMessage);
-      return;
+      return errorResponse;
     }
 
+    const highestBid = await bidRepository.findHighest(currentAuction.id);
     const bid = {
       clientId: client.id,
       auctionId: currentAuction.id,
@@ -63,6 +64,11 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       newBid.insertedId.toString()
     );
     await this.ctx.reply('Ставка прийнята');
+
+    return {
+      result: 'success',
+      defeatedBidder: highestBid?.clientId,
+    };
   }
 }
 
