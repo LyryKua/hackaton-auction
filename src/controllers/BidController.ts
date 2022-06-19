@@ -1,9 +1,8 @@
 import {Context, NarrowedContext, Telegraf} from 'telegraf';
 import {AppContext, ClientAppContext} from '../types';
-import {BidRepository} from '../db/BidRepository';
+import {BidMongoRepository, BidRepository} from '../db/BidRepository';
 import {MountMap} from 'telegraf/typings/telegram-types';
-import {AuctionRepository} from '../db/AuctionRepository';
-import {ClientRepository} from '../db/Client';
+import {ClientMongoRepository, ClientRepository} from '../db/ClientRepository';
 import {isValidByAmount, validateByExists} from '../validators/bidValidators';
 
 class BidControllerBase<C extends Context> {
@@ -19,8 +18,7 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       );
       return errorResponse;
     }
-    const bidRepository = new BidRepository(this.ctx.db);
-    const auctionRepository = new AuctionRepository(this.ctx.db);
+    const bidRepository = new BidMongoRepository(this.ctx.db);
     const bidAmountStr = this.ctx.message.text.split(' ')[1];
     const notExistErrorMessage = validateByExists(bidAmountStr);
 
@@ -50,19 +48,13 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       return errorResponse;
     }
 
-    const highestBid = await bidRepository.findHighest(currentAuction.id);
+    const highestBid = await bidRepository.findHighest(currentAuction._id.toString());
     const bid = {
-      clientId: client.id,
-      auctionId: currentAuction.id,
+      clientId: client._id.toString(),
+      auctionId: currentAuction._id.toString(),
       amount: bidAmount,
     };
-    const newBid = await bidRepository.makeBid(bid);
-
-    // console.log('test42', newBid.insertedId.toString(), currentAuction.id);
-    await auctionRepository.update(
-      currentAuction.id,
-      newBid.insertedId.toString()
-    );
+    await bidRepository.makeBid(bid);
     await this.ctx.reply('Ставка прийнята');
 
     return {
@@ -74,20 +66,20 @@ export class BidController extends BidControllerBase<ClientAppContext> {
 
 export class BidVolunteerController extends BidControllerBase<AppContext> {
   async handleHighestBid() {
-    const bidRepository = new BidRepository(this.ctx.db);
+    const bidRepository = new BidMongoRepository(this.ctx.db);
     const activeAuction = this.ctx.session.activeAuction;
     console.log('activeAuction.status', activeAuction?.status);
     if (!activeAuction || activeAuction.status !== 'opened') {
       await this.ctx.reply('Щоб створити аукціон введіть /create');
       return;
     }
-    const highestBids = await bidRepository.findLastHighest(activeAuction.id);
+    const highestBids = await bidRepository.findLastHighest(activeAuction._id.toString(), 3);
     if (!highestBids.length) {
       await this.ctx.reply('Ставок ще не було.');
       return;
     }
 
-    const clientRepo = new ClientRepository('clients', this.ctx.db);
+    const clientRepo = new ClientMongoRepository(this.ctx.db);
     const users = await clientRepo.findUsers(
       highestBids.map(bid => bid.clientId)
     );
@@ -114,8 +106,8 @@ ${highestBids
   }
 
   async getListOfBets() {
-    const bidRepo = new BidRepository(this.ctx.db);
-    const bids = await bidRepo.findAll();
+    const bidRepo = new BidMongoRepository(this.ctx.db);
+    const bids = await bidRepo.findAll({});
     await this.ctx.reply('Here they all are right from the DB');
     await this.ctx.reply(JSON.stringify(bids, null, 2));
   }

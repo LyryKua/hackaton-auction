@@ -1,18 +1,18 @@
 import {Telegraf} from 'telegraf';
 import 'dotenv/config';
-import {Auction, AuctionRepository} from './db/AuctionRepository';
+import {Auction, AuctionMongoRepository, AuctionRepository, DbAuction} from './db/AuctionRepository';
 import {ClientAppContext} from './types';
-import {SubscriptionRepository} from './db/SubscriptionRepository';
+import {SubscriptionMongoRepository, SubscriptionRepository} from './db/SubscriptionRepository';
 import {
   BidController,
   BidVolunteerController,
 } from './controllers/BidController';
 import {launchBot} from './launchBot';
-import {ClientRepository} from './db/Client';
+import {ClientMongoRepository, ClientRepository} from './db/ClientRepository';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
-import {BidRepository} from './db/BidRepository';
-import {PhotoRepository} from './db/PhotoRepository';
+import {BidMongoRepository, BidRepository} from './db/BidRepository';
+import {PhotoMongoRepository, PhotoRepository} from './db/PhotoRepository';
 
 const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
@@ -43,8 +43,8 @@ getDb().then(db => {
       );
       return;
     }
-    const auctionRepo = new AuctionRepository(ctx.db);
-    let auction: Auction | null = null;
+    const auctionRepo = new AuctionMongoRepository(ctx.db);
+    let auction: DbAuction | null = null;
     try {
       auction = await auctionRepo.findOne(auctionId);
     } catch (err) {
@@ -56,7 +56,7 @@ getDb().then(db => {
       return;
     }
     ctx.session.auction = auction;
-    const clientRepository = new ClientRepository('clients', ctx.db);
+    const clientRepository = new ClientMongoRepository(ctx.db);
     ctx.session.client = await clientRepository.register({
       telegramId: ctx.from.id,
       username: ctx.from.username,
@@ -66,13 +66,17 @@ getDb().then(db => {
     const caption = `${auction.title}
 ${auction.description}`;
     ctx.reply(caption);
-    const photoRepository = new PhotoRepository(ctx.db);
+    const photoRepository = new PhotoMongoRepository(ctx.db);
     const photo = await photoRepository.getForAuction(auction);
 
+    try {
     if (photo) {
       await ctx.replyWithPhoto({source: photo.data}, {caption});
     } else {
       await ctx.reply(caption);
+    }
+    } catch (err) {
+      await ctx.reply('photo error')
     }
   });
 
@@ -104,20 +108,19 @@ ${auction.description}`;
     ctx: ClientAppContext,
     defeatedBidder: string
   ) => {
-    if (!ctx.session.auction?.id) {
+    if (!ctx.session.auction?._id.toString()) {
       return;
     }
-    const subscriptionRepo = new SubscriptionRepository(
-      'subscriptions',
+    const subscriptionRepo = new SubscriptionMongoRepository(
       ctx.db
     );
     const {result: isLostBidderSubscribed} =
       await subscriptionRepo.isClientSubscribed(
-        ctx.session.auction?.id,
+        ctx.session.auction?._id.toString(),
         defeatedBidder
       );
     if (isLostBidderSubscribed) {
-      const clientRepository = new ClientRepository('clients', ctx.db);
+      const clientRepository = new ClientMongoRepository(ctx.db);
       const client = await clientRepository.findById(defeatedBidder);
       if (!client) {
         await ctx.reply('No such user');
@@ -136,33 +139,31 @@ ${auction.description}`;
     if (
       result === 'success' &&
       defeatedBidder &&
-      ctx.session.client?.id !== defeatedBidder
+      ctx.session.client?._id.toString() !== defeatedBidder
     ) {
       await informDefeatedBidderIfNecessary(ctx, defeatedBidder);
     }
   });
 
   clientBot.command('subscribe', async ctx => {
-    const subscriptionRepo = new SubscriptionRepository(
-      'subscriptions',
+    const subscriptionRepo = new SubscriptionMongoRepository(
       ctx.db
     );
     await subscriptionRepo.subscribe({
-      auctionId: ctx.session.auction?.id || '',
-      clientId: ctx.session.client?.id || '',
+      auctionId: ctx.session.auction?._id.toString() || '',
+      clientId: ctx.session.client?._id.toString() || '',
       type: 'active',
     });
     ctx.reply('Ви підписались на оновлення');
   });
 
   clientBot.command('unsubscribe', async ctx => {
-    const subscriptionRepo = new SubscriptionRepository(
-      'subscriptions',
+    const subscriptionRepo = new SubscriptionMongoRepository(
       ctx.db
     );
     const result = await subscriptionRepo.unsubscribe({
-      auctionId: ctx.session.auction?.id || '',
-      clientId: ctx.session.client?.id || '',
+      auctionId: ctx.session.auction?._id.toString() || '',
+      clientId: ctx.session.client?._id.toString() || '',
     });
     if (result.ok) {
       await ctx.reply('Ви відписались від оновлень');
@@ -183,8 +184,8 @@ ${auction.description}`;
       await ctx.reply('Цей аукціон вже скінчився');
       return;
     }
-    const bidRepository = new BidRepository(ctx.db);
-    const highestBid = await bidRepository.findHighest(auction.id);
+    const bidRepository = new BidMongoRepository(ctx.db);
+    const highestBid = await bidRepository.findHighest(auction._id.toString());
     if (!highestBid) {
       await ctx.reply('Ставок ще нема, введіть /bid щоб зробити ставку.');
       return;

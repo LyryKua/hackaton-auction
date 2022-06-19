@@ -2,27 +2,20 @@ import {Context, Middleware, Scenes, Telegraf} from 'telegraf';
 import {uniqBy} from 'lodash';
 import 'dotenv/config';
 import {AppContext, VolunteerSessionData} from './types';
-import {AuctionRepository, NewAuction} from './db/AuctionRepository';
-import {arrayOf, mockAuction, mockBid} from './db/mockData';
+import {Auction, AuctionMongoRepository} from './db/AuctionRepository';
 import {BidVolunteerController} from './controllers/BidController';
 import {launchBot} from './launchBot';
-import {ClientRepository} from './db/Client';
+import {ClientMongoRepository} from './db/ClientRepository';
 import {clientBot} from './clientBot';
-import {BidRepository} from './db/BidRepository';
-import {
-  SceneContextScene,
-  SceneSession,
-  SceneSessionData,
-} from 'telegraf/typings/scenes';
+import {BidMongoRepository} from './db/BidRepository';
+import {SceneContextScene, SceneSession, SceneSessionData,} from 'telegraf/typings/scenes';
 import {AuctionService} from './services/AuctionService';
-import {randomUUID} from 'crypto';
 import {VolunteerService} from './services/VolunteerService';
-import {BidService} from './services/BidService';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
-import {Volunteer, VolunteerRepository} from './db/VolunteerRepository';
-import {WithoutId} from './db/BaseRepository';
+import {Volunteer} from './db/VolunteerRepository';
 import {Chat, User as TelegramUser} from 'telegraf/typings/core/types/typegram';
+import {ObjectId} from "mongodb";
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -34,7 +27,7 @@ const auctionFields = [
 ];
 
 interface AuctionSceneSession extends SceneSession<SceneSessionData> {
-  auctionData: NewAuction;
+  auctionData: Auction;
 }
 
 interface AuctionSceneContext extends AppContext {
@@ -43,7 +36,7 @@ interface AuctionSceneContext extends AppContext {
 }
 
 // interface AuctionSceneSession extends VolunteerSessionData {
-//   auctionData: NewAuction;
+//   auctionData: Auction;
 // }
 //
 // interface AuctionSceneContext extends AppContext {
@@ -77,7 +70,7 @@ adminBot.use(Telegraf.log());
 const getVolunteerDataFromCtx = (ctx: {
   from: TelegramUser;
   chat: Chat;
-}): WithoutId<Volunteer> => ({
+}): Volunteer => ({
   telegramId: ctx.from.id,
   username: ctx.from.username,
   chatId: ctx.chat.id,
@@ -94,11 +87,12 @@ getDb().then(db => {
   });
 
   adminBot.use(async (ctx, next) => {
-    const auctionRepo = new AuctionRepository(ctx.db);
+    const auctionRepo = new AuctionMongoRepository(ctx.db);
     const volunteer = ctx.session.volunteer;
+    console.log('test42', volunteer);
     if (volunteer) {
       ctx.session.activeAuction =
-        (await auctionRepo.findActive(volunteer.id)) || undefined;
+        (await auctionRepo.findActive(volunteer._id.toString())) || undefined;
     }
     return next();
   });
@@ -132,27 +126,27 @@ getDb().then(db => {
         await ctx.reply(auctionFields[currentStep].prompt);
       } else {
         const auctionsService = new AuctionService(ctx.db, adminBot);
-        const newAuction: NewAuction = {
+        const Auction: Auction = {
           ...auctionData,
-          volunteerId: volunteer.id,
+          volunteerId: volunteer._id.toString(),
           status: 'opened',
         };
-        const auction = await auctionsService.create(newAuction);
+        const auction = await auctionsService.create(Auction);
         ctx.session.activeAuction = auction;
         await ctx.reply(`Вітаю!
 Аукціон створено.
 Наступний крок — залучити якнайбільше учасників.
-Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction.id}`);
+Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction._id.toString()}`);
         createAuctionScene.leave();
       }
     };
     await ctx.reply(auctionFields[currentStep].prompt);
-    const auctionData: NewAuction = {
+    const auctionData: Auction = {
       title: '',
       description: '',
       photos: [],
       startBid: 0,
-      volunteerId: volunteer.id,
+      volunteerId: volunteer._id.toString(),
       status: 'opened',
     };
     createAuctionScene.on('text', async ctx => {
@@ -236,110 +230,13 @@ getDb().then(db => {
     ctx.reply('Редагувати');
   });
 
-  const SUPER_ADMINS = [
-    // devs you can add your user id here
-    45412931,
-    246078859,
-    40419532, // kyryloh@wix.com
-  ];
-
-  adminBot.command('clear_mock', async ctx => {
-    const userId = ctx.message.from.id;
-    if (!SUPER_ADMINS.includes(userId)) {
-      ctx.reply('Сильно хитрий?');
-      return;
-    }
-    const auctionsService = new AuctionService(ctx.db, adminBot);
-    await auctionsService.deleteAll();
-    const bidService = new BidService(ctx.db);
-    await bidService.deleteAll();
-  });
-
-  adminBot.command('fill_mock', async ctx => {
-    const auctions = arrayOf(3, () => mockAuction());
-    const bids = arrayOf(6, () => mockBid());
-
-    const auctionsService = new AuctionService(ctx.db, adminBot);
-    for (const auction of auctions) {
-      await auctionsService.create(auction);
-    }
-    const bidService = new BidService(ctx.db);
-    for (const bid of bids) {
-      await bidService.create(bid);
-    }
-    await ctx.reply(
-      'Created a couple of mock auctions for you, anything else?'
-    );
-  });
-
-  adminBot.command('list_a', async ctx => {
-    const auctionRepo = new AuctionRepository(ctx.db);
-    const auctions = await auctionRepo.findAll();
-    console.log(auctions);
-    await ctx.reply('Here they all are right from the DB', {
-      reply_markup: {
-        inline_keyboard: auctions.map(auction => [
-          {
-            text: auction.title,
-            callback_data: auction.id,
-          },
-        ]),
-      },
-    });
-
-    adminBot.action(
-      auctions.map(a => a.id),
-      async ctx => {
-        const matchedAuction = auctions.find(
-          auction => auction.id === ctx.match[0]
-        );
-        if (!matchedAuction) {
-          await ctx.reply('no matched auction');
-          return;
-        }
-        const bidRepo = new BidRepository(ctx.db);
-        console.log('test42', matchedAuction);
-        const bids = await bidRepo.findAll({auctionId: matchedAuction.id});
-        console.log(bids);
-        const caption = `Photo: TODO\nTitle: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`;
-        // await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
-        //   caption, parse_mode: 'MarkdownV2', reply_markup: {
-        //     inline_keyboard: bids.map(bid => [{
-        //       text: `user: ${bid.clientId} – ${bid.amount}`,
-        //       callback_data: 'test',
-        //     }]) // TODO: get by unique user and highest bids
-        //   }
-        // })
-        await ctx.reply(
-          `${caption}\n${bids.length === 0 ? 'no bids' : 'bids are below'}`,
-          {
-            reply_markup: {
-              inline_keyboard: bids.map(bid => [
-                {
-                  text: `user: ${bid.clientId} – ${bid.amount}`,
-                  callback_data: 'test',
-                },
-              ]),
-            },
-          }
-        );
-      }
-    );
-  });
-
-  adminBot.command('list_bids', async ctx => {
-    await ctx.reply('List of bids');
-    const bidsController = new BidVolunteerController(ctx);
-    await bidsController.getListOfBets();
-  });
-
   adminBot.command('send_message_to_user', async ctx => {
     const [, username, message] = ctx.message.text.split(' ') as [
       string,
       string,
       string
     ];
-    const clientRepository = new ClientRepository('clients', ctx.db);
+    const clientRepository = new ClientMongoRepository(ctx.db);
     const client = await clientRepository.findClientByUsername(
       username.replace('@', '')
     );
@@ -378,7 +275,7 @@ getDb().then(db => {
   });
 
   adminBot.command('close', async ctx => {
-    const bidRepository = new BidRepository(ctx.db);
+    const bidRepository = new BidMongoRepository(ctx.db);
     const {activeAuction} = ctx.session;
     const volunteerService = new VolunteerService(ctx.db);
     const volunteer = await volunteerService.getOrCreate(
@@ -390,14 +287,14 @@ getDb().then(db => {
       );
       return;
     }
-    const highestBid = await bidRepository.findHighest(activeAuction.id);
+    const highestBid = await bidRepository.findHighest(activeAuction._id.toString());
     if (!highestBid) {
       await ctx.reply('Не було жодних ставок. Finish this flow');
       return;
     }
-    const clientRepository = new ClientRepository('clients', ctx.db);
+    const clientRepository = new ClientMongoRepository(ctx.db);
     const client = await clientRepository.findById(highestBid.clientId);
-    const allBids = await bidRepository.findAll({auctionId: activeAuction.id});
+    const allBids = await bidRepository.findAll({auctionId: activeAuction._id.toString()});
     if (!client) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
@@ -429,8 +326,8 @@ getDb().then(db => {
       );
       return;
     }
-    const auctionRepository = new AuctionRepository(ctx.db);
-    await auctionRepository.close(activeAuction.id, volunteer.id);
+    const auctionRepository = new AuctionMongoRepository(ctx.db);
+    await auctionRepository.close(activeAuction._id.toString(), volunteer._id.toString());
     delete ctx.session.activeAuction;
     await ctx.reply(`Вітаю, аукціон «Назва» завершено!
 Переможцем став @${client.username}.

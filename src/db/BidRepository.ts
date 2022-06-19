@@ -1,65 +1,63 @@
-import {Db, Filter, Sort, WithId} from 'mongodb';
-import {RepositoryBase} from './BaseRepository';
-import {randomUUID} from 'crypto';
+import {Db, Filter, WithId} from 'mongodb';
 
 export const BIDS_COLLECTION = 'bids';
 
 export type Bid = {
-  id: string;
   auctionId: string;
   clientId: string;
   amount: number;
 };
 
-type DbBid = WithId<Bid>;
+type DBBid = WithId<Bid>;
 
-const transformBid = ({_id, ...dbBid}: DbBid) => ({
-  ...dbBid,
-  id: _id.toString(),
-});
+export interface BidRepository {
+  deleteMany(filter: Filter<DBBid>): Promise<void>;
 
-export class BidRepository extends RepositoryBase<Bid> {
-  constructor(db: Db) {
-    super(BIDS_COLLECTION, db);
-  }
+  makeBid(bid: Bid): Promise<DBBid>; // TODO: rename to create
+
+  findAll(filter: Filter<DBBid>): Promise<DBBid[]>;
+
+  findHighest(auctionId: string): Promise<DBBid | undefined>; // TODO: merge `findHighest` and `findLastHighest`
+
+  findLastHighest(auctionId: string, count: number): Promise<Bid[]>;
+}
+
+export class BidMongoRepository implements BidRepository {
+  constructor(private readonly db: Db) {}
 
   async deleteMany(filter: Filter<Bid> = {}) {
     await this.db.collection(BIDS_COLLECTION).deleteMany(filter);
   }
 
-  async makeBid(bid: Omit<Bid, 'createdAt' | 'id'>) {
-    return await this.db.collection(BIDS_COLLECTION).insertOne({
-      amount: bid.amount,
-      auctionId: bid.auctionId,
-      clientId: bid.clientId,
-      id: randomUUID(),
-    });
+  async makeBid(bid: Bid): Promise<DBBid> {
+    const { insertedId } = await this.db.collection<Bid>(BIDS_COLLECTION).insertOne(bid);
+
+    return {
+      ...bid,
+      _id: insertedId,
+    };
   }
 
-  async findAll(filter: Filter<Bid> = {}): Promise<Bid[]> {
-    const cursor = this.db.collection(BIDS_COLLECTION).find<DbBid>(filter);
-    const dbBids = await cursor.toArray();
-    return dbBids.map(transformBid);
+  findAll(filter: Filter<DBBid>): Promise<DBBid[]> {
+    const cursor = this.db.collection<Bid>(BIDS_COLLECTION).find<DBBid>(filter);
+
+    return cursor.toArray();
   }
 
-  async findHighest(auctionId: string): Promise<Bid | undefined> {
-    const cursor = this.collection()
-      .find<DbBid>({auctionId})
-      .sort({amount: -1})
-      .limit(1);
+  async findHighest(auctionId: string): Promise<DBBid | undefined> {
+    const cursor = this.db.collection<Bid>(BIDS_COLLECTION)
+        .find({auctionId})
+        .sort({amount: -1})
+        .limit(1);
     const bids = await cursor.toArray();
-    if (!bids.length) {
-      return undefined;
-    }
-    return transformBid(bids[0]);
+    return bids[0]
   }
 
-  async findLastHighest(auctionId: string, count = 3): Promise<Bid[]> {
-    const cursor = this.collection()
-      .find<DbBid>({auctionId})
-      .sort({amount: -1})
-      .limit(count);
-    const bids = await cursor.toArray();
-    return bids.map(transformBid);
+  findLastHighest(auctionId: string, count: number): Promise<Bid[]> {
+    const cursor = this.db.collection<Bid>(BIDS_COLLECTION)
+        .find<DBBid>({auctionId})
+        .sort({amount: -1})
+        .limit(count);
+    return cursor.toArray();
   }
 }
