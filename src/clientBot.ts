@@ -130,7 +130,7 @@ ${auction.description}`;
     }
   };
 
-  clientBot.command('make_bid', async ctx => {
+  clientBot.command('bid', async ctx => {
     const betController = new BidController(ctx);
     const {result, defeatedBidder} = await betController.makeBid();
     if (
