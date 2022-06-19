@@ -71,8 +71,23 @@ getDb().then(db => {
       username: ctx.from.username,
       chatId: ctx.chat.id,
     });
+    const bidRepository = new BidMongoRepository(ctx.db);
+    const highestBid = await bidRepository.findHighest(auction._id.toString());
 
-    const caption = `${auction.title}
+    const leadingBidText = highestBid
+      ? `Лідируюча ставка ${highestBid.amount}грн.
+
+Підіймаємо?`
+      : `Мінімальна ставка ${auction.startBid}грн. 
+
+Ставимо?`;
+
+    const auctionStartText = `${leadingBidText}
+
+Тисни /bid та роби ставку через поле вводу.
+
+п.с. Більше інформації про команди в /about`;
+    const caption = `Аукціон "${auction.title}"
 ${auction.description}`;
     const photoRepository = new PhotoMongoRepository(ctx.db);
     const photos = await photoRepository.getForAuction(auction);
@@ -80,6 +95,7 @@ ${auction.description}`;
     try {
       if (!photos.length) {
         await ctx.reply(caption);
+        await ctx.reply(auctionStartText);
         return;
       }
       if (photos.length === 1) {
@@ -90,6 +106,7 @@ ${auction.description}`;
             caption,
           }
         );
+        await ctx.reply(auctionStartText);
         return;
       }
       // await ctx.replyWithPhoto({source: photo.data}, {caption});
@@ -101,6 +118,7 @@ ${auction.description}`;
       );
       await ctx.replyWithMediaGroup(mediaGroupReply);
       await ctx.reply(caption);
+      await ctx.reply(auctionStartText);
     } catch (err) {
       console.error(err);
       await ctx.reply('photo error');
@@ -215,7 +233,20 @@ ${auction.description}`;
   });
 
   clientBot.command('about', ctx => {
-    ctx.reply('У цьому боті ви можете робити ставку');
+    ctx.reply(`
+ 
+Користуватися ботом дуже легко.
+
+/bid - Зробити ставку. Вказуй суму та відправляй повідомлення у чат з ботом.
+
+/subscribe - Підписуйся на оновлення та слідкуй за гарячими баталіями.
+
+/unsubscribe - Відписатися від оновлень.
+
+/top - Показати лідируючу ставку. Побачив? Поставив нову!
+
+Аукціон у самому розпалі. Не гай часу!    
+`);
   });
 
   clientBot.command('all', async ctx => {
