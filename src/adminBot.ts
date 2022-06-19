@@ -1,5 +1,5 @@
-import {Context, Middleware, Scenes, Telegraf} from 'telegraf';
-import {uniqBy} from 'lodash';
+import {Middleware, Scenes, Telegraf} from 'telegraf';
+import {debounce, uniqBy} from 'lodash';
 import 'dotenv/config';
 import {AppContext, VolunteerSessionData} from './types';
 import {Auction, AuctionMongoRepository} from './db/AuctionRepository';
@@ -15,7 +15,6 @@ import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
 import {Volunteer} from './db/VolunteerRepository';
 import {Chat, User as TelegramUser} from 'telegraf/typings/core/types/typegram';
-import {ObjectId} from "mongodb";
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -135,10 +134,13 @@ getDb().then(db => {
         await ctx.reply(`Вітаю!
 Аукціон створено.
 Наступний крок — залучити якнайбільше учасників.
-Посилання на аукціон: https://t.me/${process.env.AUCTION_BOT_NAME}?start=${auction._id.toString()}`);
+Посилання на аукціон: https://t.me/${
+          process.env.AUCTION_BOT_NAME
+        }?start=${auction._id.toString()}`);
         await ctx.scene.leave();
       }
     };
+    const debouncedNext = debounce(next, 2000);
     await ctx.reply(auctionFields[currentStep].prompt);
     const auctionData: Auction = {
       title: '',
@@ -174,14 +176,20 @@ getDb().then(db => {
       }
     });
     createAuctionScene.on('photo', async ctx => {
+      const mediaGroupId = ctx.message.media_group_id;
       if (currentStep >= auctionFields.length) {
         return;
       }
       const currentField = auctionFields[currentStep].id;
       switch (currentField) {
         case 'photos': {
-          auctionData.photos = ctx.message.photo;
-          await next(ctx);
+          const photos = ctx.message.photo;
+          auctionData.photos.push(photos[photos.length - 1]);
+          if (!mediaGroupId) {
+            await debouncedNext(ctx);
+          } else {
+            await debouncedNext(ctx);
+          }
           break;
         }
         default:
@@ -286,14 +294,23 @@ getDb().then(db => {
       );
       return;
     }
-    const highestBid = await bidRepository.findHighest(activeAuction._id.toString());
+    const highestBid = await bidRepository.findHighest(
+      activeAuction._id.toString()
+    );
+    const auctionRepository = new AuctionMongoRepository(ctx.db);
     if (!highestBid) {
-      await ctx.reply('Не було жодних ставок. Finish this flow');
+      await ctx.reply('Не було жодних ставок. Закриваємо так');
+      await auctionRepository.close(
+        activeAuction._id.toString(),
+        volunteer._id.toString()
+      );
       return;
     }
     const clientRepository = new ClientMongoRepository(ctx.db);
     const client = await clientRepository.findById(highestBid.clientId);
-    const allBids = await bidRepository.findAll({auctionId: activeAuction._id.toString()});
+    const allBids = await bidRepository.findAll({
+      auctionId: activeAuction._id.toString(),
+    });
     if (!client) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
@@ -325,8 +342,11 @@ getDb().then(db => {
       );
       return;
     }
-    const auctionRepository = new AuctionMongoRepository(ctx.db);
-    await auctionRepository.close(activeAuction._id.toString(), volunteer._id.toString());
+
+    await auctionRepository.close(
+      activeAuction._id.toString(),
+      volunteer._id.toString()
+    );
     delete ctx.session.activeAuction;
     await ctx.reply(`Вітаю, аукціон «Назва» завершено!
 Переможцем став @${client.username}.

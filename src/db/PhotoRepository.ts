@@ -6,45 +6,44 @@ const PHOTOS_COLLECTION = 'photos';
 export interface PhotoBlob {
   _id: ObjectId;
   data: Buffer;
+  auctionId: ObjectId;
 }
 
-export interface DbPhotoBlob {
-  _id: ObjectId;
+export interface DbPhotoBlob extends Omit<PhotoBlob, 'data'> {
   data: Binary;
 }
 
 export interface PhotoRepository {
-  create(auction: WithoutId<PhotoBlob>): Promise<PhotoBlob>;
+  create(photos: WithoutId<PhotoBlob>[]): Promise<PhotoBlob[]>;
 
-  getForAuction(auction: Auction): Promise<PhotoBlob | undefined>;
+  getForAuction(auction: WithId<Auction>): Promise<PhotoBlob[]>;
 }
 
 export class PhotoMongoRepository implements PhotoRepository {
   constructor(private readonly db: Db) {}
 
-  async create(photoBlob: WithoutId<PhotoBlob>): Promise<PhotoBlob> {
-    const {insertedId} = await this.db
+  async create(photoBlobs: WithoutId<PhotoBlob>[]): Promise<PhotoBlob[]> {
+    const {insertedIds} = await this.db
       .collection(PHOTOS_COLLECTION)
-      .insertOne(photoBlob);
-    return {
+      .insertMany(photoBlobs);
+
+    return photoBlobs.map((photoBlob, i) => ({
       ...photoBlob,
-      _id: insertedId,
-    };
+      _id: insertedIds[i],
+    }));
   }
 
-  async getForAuction(auction: Auction): Promise<PhotoBlob | undefined> {
-    const {photoBlobId} = auction;
-    const photo = await this.db
+  async getForAuction(auction: WithId<Auction>): Promise<PhotoBlob[]> {
+    const photosCursor = this.db
       .collection(PHOTOS_COLLECTION)
-      .findOne<DbPhotoBlob>({
-        _id: photoBlobId,
+      .find<DbPhotoBlob>({
+        auctionId: auction._id,
       });
-    if (!photo) {
-      return undefined;
-    }
-    return {
-      ...photo,
-      data: photo.data.buffer,
-    };
+    return photosCursor
+      .map(photo => ({
+        ...photo,
+        data: photo.data.buffer,
+      }))
+      .toArray();
   }
 }

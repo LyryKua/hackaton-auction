@@ -7,7 +7,6 @@ export type Auction = {
   title: string;
   description: string;
   photos: PhotoSize[];
-  photoBlobId?: ObjectId;
   startBid: number;
   volunteerId: string;
   status: 'opened' | 'closed';
