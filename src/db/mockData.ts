@@ -1,6 +1,7 @@
-import {NewAuction, Auction} from './AuctionRepository';
+import {Auction, NewAuction} from './AuctionRepository';
 import {Bid} from './BidRepository'; // TODO: rename to bet
 import {randomUUID} from "crypto";
+import {ObjectId} from "mongodb";
 
 type Mocker<T> = (overrides?: Partial<T>) => T
 
@@ -13,6 +14,7 @@ export const mockAuction: Mocker<Auction> = overrides => ({
   id: randomUUID(),
   title: 'foo title',
   description: 'bar description zaz',
+  photoBlobId: new ObjectId('asdf'),
   photos: [],
   startBid: 10,
   volunteerId: randomUUID(),
