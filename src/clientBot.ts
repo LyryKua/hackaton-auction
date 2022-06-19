@@ -54,7 +54,7 @@ getDb().then(db => {
       return;
     }
 
-    if (auction.status === 'closed') {
+    if (auction.status !== 'opened') {
       await ctx.reply(
         'Нажаль цей аукціон вже завершено :( Зверніться до волонтера за отриманням лінки на новий аукціон '
       );
