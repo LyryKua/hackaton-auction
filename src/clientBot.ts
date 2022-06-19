@@ -34,6 +34,7 @@ getDb().then(db => {
 
   clientBot.start(async ctx => {
     const auctionId = ctx.startPayload || null;
+
     if (!auctionId) {
       await ctx.reply(
         'Наразі ми не підтримуємо пошук аукціиону, ви можете перейти за лінкою конкретного аукціону, яку кинув волонтер для того щоб робити ставки'
@@ -50,6 +51,13 @@ getDb().then(db => {
     }
     if (!auction) {
       await ctx.reply('Щось не так, нема такого аукціону(');
+      return;
+    }
+
+    if (auction.status === 'closed') {
+      await ctx.reply(
+        'Нажаль цей аукціон вже завершено :( Зверніться до волонтера за отриманням лінки на новий аукціон '
+      );
       return;
     }
     ctx.session.auction = auction;
