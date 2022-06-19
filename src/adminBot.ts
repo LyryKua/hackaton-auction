@@ -1,4 +1,4 @@
-import {Middleware, Scenes, Telegraf} from 'telegraf';
+import {Context, Middleware, Scenes, Telegraf} from 'telegraf';
 import {uniqBy} from 'lodash';
 import 'dotenv/config';
 import {AppContext, VolunteerSessionData} from './types';
@@ -20,6 +20,9 @@ import {VolunteerService} from './services/VolunteerService';
 import {BidService} from './services/BidService';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
+import {Volunteer, VolunteerRepository} from './db/VolunteerRepository';
+import {WithoutId} from './db/BaseRepository';
+import {Chat, User as TelegramUser} from 'telegraf/typings/core/types/typegram';
 
 const CREATE_AUCTION_SCENE = 'CREATE_AUCTION_SCENE2';
 
@@ -70,6 +73,15 @@ if (!BOT_ADMIN_TOKEN) {
 export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
 
 adminBot.use(Telegraf.log());
+
+const getVolunteerDataFromCtx = (ctx: {
+  from: TelegramUser;
+  chat: Chat;
+}): WithoutId<Volunteer> => ({
+  telegramId: ctx.from.id,
+  username: ctx.from.username,
+  chatId: ctx.chat.id,
+});
 // adminBot.use(session());
 getDb().then(db => {
   adminBot.use(session(db, {collectionName: 'adminSessions'}));
@@ -188,13 +200,8 @@ getDb().then(db => {
   adminBot.start(async ctx => {
     const volunteerService = new VolunteerService(ctx.db);
 
-    const {id: telegramId} = ctx.from;
-    const volunteer = {
-      id: randomUUID(),
-      telegramId,
-    };
-    await volunteerService.create(volunteer);
-    ctx.session.volunteer = volunteer;
+    const volunteer = getVolunteerDataFromCtx(ctx);
+    ctx.session.volunteer = await volunteerService.getOrCreate(volunteer);
 
     await ctx.reply(` 
 Вітаю!
@@ -287,14 +294,14 @@ getDb().then(db => {
           auction => auction.id === ctx.match[0]
         );
         if (!matchedAuction) {
-          await ctx.reply('no matched auction')
-          return
+          await ctx.reply('no matched auction');
+          return;
         }
-        const bidRepo = new BidRepository(ctx.db)
+        const bidRepo = new BidRepository(ctx.db);
         console.log('test42', matchedAuction);
-        const bids = await bidRepo.findAll({auctionId: matchedAuction.id})
+        const bids = await bidRepo.findAll({auctionId: matchedAuction.id});
         console.log(bids);
-        const caption = `Photo: TODO\nTitle: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`
+        const caption = `Photo: TODO\nTitle: *${matchedAuction.title}*\nDescription: *${matchedAuction.description}*\nStatus: *${matchedAuction.status}*\nstartBid: *${matchedAuction.startBid}*\n`;
         // await ctx.replyWithPhoto(matchedAuction.photos[0].file_id, {
         //   caption, parse_mode: 'MarkdownV2', reply_markup: {
         //     inline_keyboard: bids.map(bid => [{
@@ -303,14 +310,19 @@ getDb().then(db => {
         //     }]) // TODO: get by unique user and highest bids
         //   }
         // })
-        await ctx.reply(`${caption}\n${bids.length === 0 ? 'no bids' : 'bids are below'}`, {
-          reply_markup: {
-            inline_keyboard: bids.map(bid => [{
-              text: `user: ${bid.clientId} – ${bid.amount}`,
-              callback_data: 'test',
-            }])
+        await ctx.reply(
+          `${caption}\n${bids.length === 0 ? 'no bids' : 'bids are below'}`,
+          {
+            reply_markup: {
+              inline_keyboard: bids.map(bid => [
+                {
+                  text: `user: ${bid.clientId} – ${bid.amount}`,
+                  callback_data: 'test',
+                },
+              ]),
+            },
           }
-        })
+        );
       }
     );
   });
@@ -368,7 +380,11 @@ getDb().then(db => {
   adminBot.command('close', async ctx => {
     const bidRepository = new BidRepository(ctx.db);
     const {activeAuction} = ctx.session;
-    if (!activeAuction) {
+    const volunteerService = new VolunteerService(ctx.db);
+    const volunteer = await volunteerService.getOrCreate(
+      getVolunteerDataFromCtx(ctx)
+    );
+    if (!activeAuction || activeAuction.status !== 'opened') {
       await ctx.reply(
         'В вас наразі немає активного аукціону. Щоб створити команда /create'
       );
@@ -381,7 +397,7 @@ getDb().then(db => {
     }
     const clientRepository = new ClientRepository('clients', ctx.db);
     const client = await clientRepository.findById(highestBid.clientId);
-    const allBids = await bidRepository.findAll({auctionId: activeAuction.id})
+    const allBids = await bidRepository.findAll({auctionId: activeAuction.id});
     if (!client) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
@@ -390,14 +406,17 @@ getDb().then(db => {
     }
     try {
       for (const bid of uniqBy(allBids, 'clientId')) {
-        const participant = await clientRepository.findById(bid.clientId)
+        const participant = await clientRepository.findById(bid.clientId);
         if (!participant) {
           await ctx.reply(
-              'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
+            'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
           );
-          return
+          return;
         }
-        await clientBot.telegram.sendMessage(participant.chatId!, 'Привіт, аукціон завершенно вставити сюди текст')
+        await clientBot.telegram.sendMessage(
+          participant.chatId,
+          'Привіт, аукціон завершенно вставити сюди текст'
+        );
       }
       await clientBot.telegram.sendMessage(
         client.chatId,
@@ -410,6 +429,9 @@ getDb().then(db => {
       );
       return;
     }
+    const auctionRepository = new AuctionRepository(ctx.db);
+    await auctionRepository.close(activeAuction.id, volunteer.id);
+    delete ctx.session.activeAuction;
     await ctx.reply(`Вітаю, аукціон «Назва» завершено!
 Переможцем став @${client.username}.
 Переможна ставка склала UAH ${highestBid.amount}
