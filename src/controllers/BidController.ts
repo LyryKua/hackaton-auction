@@ -68,7 +68,6 @@ export class BidVolunteerController extends BidControllerBase<AppContext> {
   async handleHighestBid() {
     const bidRepository = new BidMongoRepository(this.ctx.db);
     const activeAuction = this.ctx.session.activeAuction;
-    console.log('activeAuction.status', activeAuction?.status);
     if (!activeAuction || activeAuction.status !== 'opened') {
       await this.ctx.reply('Щоб створити аукціон введіть /create');
       return;
