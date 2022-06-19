@@ -131,7 +131,7 @@ getDb().then(db => {
       if (currentStep < auctionFields.length) {
         await ctx.reply(auctionFields[currentStep].prompt);
       } else {
-        const auctionsService = new AuctionService(ctx.db);
+        const auctionsService = new AuctionService(ctx.db, adminBot);
         const newAuction: NewAuction = {
           ...auctionData,
           volunteerId: volunteer.id,
@@ -249,7 +249,7 @@ getDb().then(db => {
       ctx.reply('Сильно хитрий?');
       return;
     }
-    const auctionsService = new AuctionService(ctx.db);
+    const auctionsService = new AuctionService(ctx.db, adminBot);
     await auctionsService.deleteAll();
     const bidService = new BidService(ctx.db);
     await bidService.deleteAll();
@@ -259,7 +259,7 @@ getDb().then(db => {
     const auctions = arrayOf(3, () => mockAuction());
     const bids = arrayOf(6, () => mockBid());
 
-    const auctionsService = new AuctionService(ctx.db);
+    const auctionsService = new AuctionService(ctx.db, adminBot);
     for (const auction of auctions) {
       await auctionsService.create(auction);
     }

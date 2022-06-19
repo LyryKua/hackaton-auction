@@ -1,22 +1,23 @@
-import {Db, Filter, ObjectId, WithId} from 'mongodb';
+import {Db, Filter, ObjectId, WithId as WithMongoId} from 'mongodb';
 import {PhotoSize} from 'typegram';
-import {RepositoryBase} from './BaseRepository';
+import {RepositoryBase, WithoutId} from './BaseRepository';
 
 export const AUCTIONS_COLLECTION = 'auctions';
 
-export type Auction = {
+export interface Auction {
   id: string;
   title: string;
   description: string;
   photos: PhotoSize[];
+  photoBlobId: ObjectId;
   startBid: number;
   volunteerId: string;
   status: 'opened' | 'closed';
-};
+}
 
-export type NewAuction = Omit<Auction, 'id'>;
+export type NewAuction = Omit<Auction, 'id' | 'photoBlobId'>;
 
-type DBAuction = WithId<NewAuction>;
+type DBAuction = WithMongoId<WithoutId<Auction>>;
 // type WithNormalId<T extends Record<string, unknown>> = T & {id: string};
 //
 // const transformId = <T extends Record<string, unknown>>({

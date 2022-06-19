@@ -12,6 +12,7 @@ import {ClientRepository} from './db/Client';
 import {getDb} from './db/connection';
 import {session} from 'telegraf-session-mongodb';
 import {BidRepository} from './db/BidRepository';
+import {PhotoRepository} from './db/PhotoRepository';
 
 const DB_URL = process.env.DB_URL;
 const DB_NAME = process.env.DB_NAME;
@@ -61,17 +62,16 @@ getDb().then(db => {
       username: ctx.from.username,
       chatId: ctx.chat.id,
     });
-    // console.log('auction.photos', auction.photos);
 
     const caption = `${auction.title}
 ${auction.description}`;
     ctx.reply(caption);
-    const photoSizes = auction.photos;
-    try {
-      await ctx.replyWithPhoto(photoSizes[photoSizes.length - 1].file_id, {
-        caption,
-      });
-    } catch (err) {
+    const photoRepository = new PhotoRepository(ctx.db);
+    const photo = await photoRepository.getForAuction(auction);
+
+    if (photo) {
+      await ctx.replyWithPhoto({source: photo.data}, {caption});
+    } else {
       await ctx.reply(caption);
     }
   });
