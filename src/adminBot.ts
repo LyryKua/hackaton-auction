@@ -306,18 +306,21 @@ getDb().then(db => {
       return;
     }
     const clientRepository = new ClientMongoRepository(ctx.db);
-    const client = await clientRepository.findById(highestBid.clientId);
+    const winnerClient = await clientRepository.findById(highestBid.clientId);
     const allBids = await bidRepository.findAll({
       auctionId: activeAuction._id.toString(),
     });
-    if (!client) {
+    if (!winnerClient) {
       await ctx.reply(
         'Щось не так, може бути. Мабуть, треба врчуну подивитись /bids та написати в ручну, сорі за це('
       );
       return;
     }
     try {
-      for (const bid of uniqBy(allBids, 'clientId')) {
+      for (const bid of uniqBy(
+        allBids.filter(({clientId}) => clientId !== highestBid.clientId),
+        'clientId'
+      )) {
         const participant = await clientRepository.findById(bid.clientId);
         if (!participant) {
           await ctx.reply(
@@ -336,7 +339,7 @@ getDb().then(db => {
         );
       }
       await clientBot.telegram.sendMessage(
-        client.chatId,
+        winnerClient.chatId,
         `Та-дам! Вітаємо з перемогою в аукціоні!
 Твоя переможна ставка, грн - ${highestBid.amount}
 Протягом кількох днів організатор аукціону повідомить тебе про умови оплати та доставки.
@@ -357,7 +360,7 @@ getDb().then(db => {
     );
     delete ctx.session.activeAuction;
     await ctx.reply(`Вітаю, аукціон «Назва» завершено!
-Переможцем став @${client.username}.
+Переможцем став @${winnerClient.username}.
 Переможна ставка склала UAH ${highestBid.amount}
 Бот відправив привітальне повідомлення. 
 Не забудь надіслати деталі оплати та доставки.
