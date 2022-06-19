@@ -30,7 +30,9 @@ export class BidMongoRepository implements BidRepository {
   }
 
   async makeBid(bid: Bid): Promise<DBBid> {
-    const { insertedId } = await this.db.collection<Bid>(BIDS_COLLECTION).insertOne(bid);
+    const {insertedId} = await this.db
+      .collection<Bid>(BIDS_COLLECTION)
+      .insertOne(bid);
 
     return {
       ...bid,
@@ -45,19 +47,21 @@ export class BidMongoRepository implements BidRepository {
   }
 
   async findHighest(auctionId: string): Promise<DBBid | undefined> {
-    const cursor = this.db.collection<Bid>(BIDS_COLLECTION)
-        .find({auctionId})
-        .sort({amount: -1})
-        .limit(1);
+    const cursor = this.db
+      .collection<Bid>(BIDS_COLLECTION)
+      .find({auctionId})
+      .sort({amount: -1})
+      .limit(1);
     const bids = await cursor.toArray();
-    return bids[0]
+    return bids[0];
   }
 
   findLastHighest(auctionId: string, count: number): Promise<Bid[]> {
-    const cursor = this.db.collection<Bid>(BIDS_COLLECTION)
-        .find<DBBid>({auctionId})
-        .sort({amount: -1})
-        .limit(count);
+    const cursor = this.db
+      .collection<Bid>(BIDS_COLLECTION)
+      .find<DBBid>({auctionId})
+      .sort({amount: -1})
+      .limit(count);
     return cursor.toArray();
   }
 }
