@@ -48,7 +48,9 @@ export class AuctionRepository extends RepositoryBase<Auction> {
         _id: new ObjectId(auctionId),
       },
       {
-        status: 'closed',
+        $set: {
+          status: 'closed',
+        },
       }
     );
   }
@@ -58,14 +60,18 @@ export class AuctionRepository extends RepositoryBase<Auction> {
   }
 
   findAll(): Promise<Auction[]> {
-    const cursor = this.db.collection<Auction>(AUCTIONS_COLLECTION).find<DBAuction>({});
+    const cursor = this.db
+      .collection<Auction>(AUCTIONS_COLLECTION)
+      .find<DBAuction>({});
     return cursor.map(transformAuction).toArray();
   }
 
   async findOne(auctionId: string): Promise<Auction | null> {
-    const auction = await this.db.collection<Auction>(AUCTIONS_COLLECTION).findOne({
-      _id: new ObjectId(auctionId),
-    });
+    const auction = await this.db
+      .collection<Auction>(AUCTIONS_COLLECTION)
+      .findOne({
+        _id: new ObjectId(auctionId),
+      });
     if (!auction) {
       return null;
     }
