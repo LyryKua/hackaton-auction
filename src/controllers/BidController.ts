@@ -36,6 +36,10 @@ export class BidController extends BidControllerBase<ClientAppContext> {
       );
       return errorResponse;
     }
+    if (currentAuction.status !== 'opened') {
+      await this.ctx.reply('Цей аукціон вже скінчився.')
+      return errorResponse;
+    }
 
     const notEnoughAmountErrorMessage = await isValidByAmount(
       bidRepository,

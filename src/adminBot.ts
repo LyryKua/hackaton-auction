@@ -68,7 +68,7 @@ if (!BOT_ADMIN_TOKEN) {
 
 export const adminBot = new Telegraf<AppContext>(BOT_ADMIN_TOKEN);
 
-adminBot.use(Telegraf.log());
+// adminBot.use(Telegraf.log());
 
 const getVolunteerDataFromCtx = (ctx: {
   from: TelegramUser;
@@ -141,6 +141,9 @@ getDb().then(db => {
 Посилання на аукціон: https://t.me/${
           process.env.AUCTION_BOT_NAME
         }?start=${auction._id.toString()}`);
+        // the scene event handlers when entering scene again work at the same closure and not the new closure of enter()
+        // this causes the second time creation of the auction not to work
+        currentStep = 0;
         await ctx.scene.leave();
       }
     };
