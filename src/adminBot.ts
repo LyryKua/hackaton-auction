@@ -204,6 +204,12 @@ getDb().then(db => {
     const volunteerService = new VolunteerService(ctx.db);
 
     const volunteer = getVolunteerDataFromCtx(ctx);
+    if (!volunteer.username) {
+      await ctx.reply(
+        'Для того щоб користуватися ботом у вас має бути публічний telegram username типу @username'
+      );
+      return;
+    }
     ctx.session.volunteer = await volunteerService.getOrCreate(volunteer);
 
     await ctx.reply(` 
@@ -361,8 +367,11 @@ getDb().then(db => {
       volunteer._id.toString()
     );
     delete ctx.session.activeAuction;
-    await ctx.reply(`Вітаю, аукціон «Назва» завершено!
-Переможцем став @${winnerClient.username}.
+    const winnerLink = winnerClient.username
+      ? `@${winnerClient.username}`
+      : `/sendMessage${winnerClient.chatId} (в переможця немає телеграм @username, тому ця команда відправить месседж с проханням сконтактувати @${volunteer.username})`;
+    await ctx.reply(`Вітаю, аукціон «${activeAuction.title}» завершено!
+Переможцем став ${winnerLink}.
 Переможна ставка склала UAH ${highestBid.amount}
 Бот відправив привітальне повідомлення. 
 Не забудь надіслати деталі оплати та доставки.
@@ -371,6 +380,21 @@ getDb().then(db => {
   });
 
   launchBot(adminBot);
+});
+
+adminBot.hears(/^\/sendMessage(\d+)$/, async ctx => {
+  const command = ctx.message.text;
+  console.log('command', command);
+  const sendMessageGroup = command.trim().match(/^\/sendMessage(\d+)$/);
+  if (!sendMessageGroup) {
+    return;
+  }
+  const [, chatIdStr] = sendMessageGroup;
+  const volunteer = getVolunteerDataFromCtx(ctx);
+  await clientBot.telegram.sendMessage(
+    Number(chatIdStr),
+    `Вітаю, ви виграли на аукціоні, та волонтер не може звʼязатися з вами напряму, бо в вас немає публічного @username, будь ласка звʼяжіться з @${volunteer.username}`
+  );
 });
 // Enable graceful stop
 process.once('SIGINT', () => adminBot.stop('SIGINT'));
