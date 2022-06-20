@@ -1,4 +1,5 @@
-import {Telegraf} from 'telegraf';
+import {Telegraf, NarrowedContext} from 'telegraf';
+import {MountMap} from 'telegraf/typings/telegram-types';
 import 'dotenv/config';
 import {AuctionMongoRepository, DbAuction} from './db/AuctionRepository';
 import {ClientAppContext} from './types';
@@ -150,7 +151,7 @@ ${auction.description}`;
     // });
   });
   const informDefeatedBidderIfNecessary = async (
-    ctx: ClientAppContext,
+    ctx: NarrowedContext<ClientAppContext, MountMap['text']>,
     defeatedBidder: string
   ) => {
     if (!ctx.session.auction?._id.toString()) {
@@ -171,8 +172,7 @@ ${auction.description}`;
         );
         return;
       }
-      // @ts-ignore
-      const currentBid = ctx.message?.text.split(' ')[1];
+      const currentBid = ctx.message.text.split(' ')[1];
       await clientBot.telegram.sendMessage(
         client.chatId,
         `Нова виграшна ставка - ${currentBid} грн
