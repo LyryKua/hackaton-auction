@@ -166,14 +166,18 @@ ${auction.description}`;
       const clientRepository = new ClientMongoRepository(ctx.db);
       const client = await clientRepository.findById(defeatedBidder);
       if (!client) {
-        await ctx.reply('No such user');
+        await ctx.reply(
+          'Щось пішло не так. Здається, такого користувача немає'
+        );
         return;
       }
+      // @ts-ignore
+      const currentBid = ctx.message?.text.split(' ')[1];
       await clientBot.telegram.sendMessage(
         client.chatId,
-        `Нова виграшна ставка - _todo_ грн
+        `Нова виграшна ставка - ${currentBid} грн
 Бажаєте зробити нову ставку? Тоді
-тисни кнопку нижче`
+використовуй команду /bid`
       );
     }
   };
